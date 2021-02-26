@@ -1,4 +1,4 @@
-update=2020 December 19, Saturday 22:13:01
+update=2021 January 31, Sunday 16:02:34
 version=1
 last_client=kicad
 [general]
@@ -22,17 +22,19 @@ AllowMicroVias=0
 AllowBlindVias=0
 RequireCourtyardDefinitions=0
 ProhibitOverlappingCourtyards=1
-MinTrackWidth=0.2
+MinTrackWidth=0.1524
 MinViaDiameter=0.4
 MinViaDrill=0.3
 MinMicroViaDiameter=0.2
 MinMicroViaDrill=0.09999999999999999
 MinHoleToHole=0.25
 TrackWidth1=0.25
-TrackWidth2=0.25
-TrackWidth3=0.4
-TrackWidth4=0.5
-TrackWidth5=1
+TrackWidth2=0.1524
+TrackWidth3=0.25
+TrackWidth4=0.4
+TrackWidth5=0.5
+TrackWidth6=1
+TrackWidth7=5
 ViaDiameter1=0.8
 ViaDrill1=0.4
 dPairWidth1=0.2
@@ -241,6 +243,17 @@ dPairWidth=0.2
 dPairGap=0.25
 dPairViaGap=0.25
 [pcbnew/Netclasses/1]
+Name=72V/1.5A
+Clearance=0.3
+TrackWidth=1
+ViaDiameter=0.8
+ViaDrill=0.4
+uViaDiameter=0.3
+uViaDrill=0.1
+dPairWidth=0.2
+dPairGap=0.25
+dPairViaGap=0.25
+[pcbnew/Netclasses/2]
 Name=72V/1mA
 Clearance=0.5
 TrackWidth=0.25
@@ -251,10 +264,10 @@ uViaDrill=0.1
 dPairWidth=0.2
 dPairGap=0.25
 dPairViaGap=0.25
-[pcbnew/Netclasses/2]
+[pcbnew/Netclasses/3]
 Name=72V/5A
 Clearance=0.3
-TrackWidth=1
+TrackWidth=5
 ViaDiameter=0.8
 ViaDrill=0.4
 uViaDiameter=0.3
