@@ -1,0 +1,27 @@
+{
+  "name": "mcp356x",
+  "version": "1.0.0",
+  "description": "API for a Microchip MCP356x Analog to Digital Converter",
+  "main": "mcp356x.js",
+  "scripts": {
+    "test": "echo \\\"Error: no test specified\\\" && exit 1"
+  },
+  "keywords": [
+    "adc",
+    "mcp3561",
+    "mcp3562",
+    "mcp3564",
+    "microchip",
+    "analog",
+    "to",
+    "digital",
+    "embedded",
+    "electronics",
+    "ic"
+  ],
+  "author": "Erland Lewin <erland@lewin.nu>",
+  "license": "ISC",
+  "dependencies": {
+    "spi-device": "^3.1.0"
+  }
+}

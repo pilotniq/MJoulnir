@@ -1,0 +1,39 @@
+Got packet:
+Data=02
+49
+04
+0178 temp_mos =37,6
+0155 temp_motor=34,1
+ffffffc8 current_motor = -0.56
+00000000 current_in = 0
+ffffffec id
+ffffffcc iq
+0000 duty_now
+00000000 rpm
+02c8 v_in = 71.2
+00000000 amp hours
+00000000 amp_hours_charged
+00000000 watt_hours
+00000000 watt_hours_charged
+00000000 tachometer
+00000000 tachometer_abs
+00 fault_code
+0ad60c30 pid_pos
+38 vesc_id ?
+0178 temp mos1 = 37,6
+0101 temp mos2
+7801 temp mos3
+552e012f avg vd
+ffffff71 avg vq 
+0000010b ?
+cc80 crc
+03 stop byte
+
+Analysis:
+02 = short packet
+49 = packet length
+04 = COMM_GET_VALUES
+01780155 = float of v_in, but can't convert
+
+The VESC Bluetooth MAC:
+DC:51:04:A5:E2:A1

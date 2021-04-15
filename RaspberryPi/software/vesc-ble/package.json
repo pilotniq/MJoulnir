@@ -1,0 +1,19 @@
+{
+  "name": "vesc-ble",
+  "version": "0.0.1",
+  "description": "Connects to and communicates with a Vedder Electronic Speed Control (VESC) device using Bluetooth Low Energy (BLE)",
+  "keywords": [
+    "VESC",
+    "BLE",
+    "Bluetooth",
+    "Electronic Speed Control",
+    "ESC",
+    "Vedder Electronic Speed Control"
+  ],
+  "author": "Erland Lewin <erland@lewin.nu>",
+  "main": "index.js",
+  "types": "./index.d.ts",
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-12"
+  }
+}

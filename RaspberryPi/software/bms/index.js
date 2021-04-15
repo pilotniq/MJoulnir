@@ -1,5 +1,5 @@
 const SerialPort = require('serialport')
-
+const AsyncLock = require('async-lock'); 
 class SerialWrapper
 {
 	constructor( device, speed )
@@ -40,6 +40,11 @@ class SerialWrapper
 			} );
 	}
 
+	close()
+	{
+		this.port.close()
+	}
+
 	async write( buffer )
 	{
 		return new Promise( (resolve, reject) => 
@@ -64,6 +69,11 @@ class SerialWrapper
 		var result = this.readQueue;
 		this.readQueue = [];
 		return result;
+	}
+
+	flushInput()
+	{
+		this.readQueue = [];
 	}
 }
 
@@ -107,16 +117,16 @@ class BMSBoard
 
 	async readBytesFromRegister( register, byteCount )
 	{
-		return pack.readBytesFromDeviceRegister( this.id, register, byteCount );
+		return this.pack.readBytesFromDeviceRegister( this.id, register, byteCount );
 	}
 
 	async writeByteToRegister( register, byte )
 	{
-		console.log( "BMS Board: writeByteToRegister(register=" + register + ")" )
+		// console.log( "BMS Board: writeByteToRegister(register=" + register + ")" )
 
-		return pack.writeByteToDeviceRegister( this.id, register, byte )
+		return this.pack.writeByteToDeviceRegister( this.id, register, byte )
 			.then( () => this.readFaults() )
-			.then( (faults) => console.log( "Faults: " + faults ) )
+			// .then( (faults) => console.log( "Faults: " + faults ) )
 	}
 
 	async writeAlertStatus( alertStatus )
@@ -128,12 +138,12 @@ class BMSBoard
 	async readStatus()
 	{
 		var bytes = await this.readBytesFromRegister( BMSBoard.Registers.REG_ALERT_STATUS, 4 );
-		console.log( "status bytes=" + bytes );
+		// console.log( "status bytes=" + bytes );
 
 		this.alerts = new BQAlerts( bytes[0] ); 
-		console.log( "Alerts: " + this.alerts )
+		// console.log( "Alerts: " + this.alerts )
 		this.faults = new BQFaults( bytes[1] );
-		console.log( "Faults: " + this.faults )
+		// console.log( "Faults: " + this.faults )
 		this.covFaults = bytes[2];
 		this.cuvFaults = bytes[3];
 	}
@@ -191,23 +201,23 @@ class BMSBoard
 		var cellSum = 0
 
 		this.moduleVolt = (bytes[0] * 256 + bytes[1]) * 6.25 / (0.1875 * 2 ** 14); // 0.002034609;
-		console.log( "moduleVolt = " + this.moduleVolt + "(" + bytes[0] + ", " + bytes[1] + ")" );
+		// console.log( "moduleVolt = " + this.moduleVolt + "(" + bytes[0] + ", " + bytes[1] + ")" );
 		
 		for( var i = 0; i < 6; i++ )
 		{
 			this.cellVoltages[i] = (bytes[2 + i * 2] * 256 + bytes[2 + i * 2 + 1]) * 6250 / (16383 * 1000)
 			cellSum += this.cellVoltages[i]
-			console.log( "Cell voltage " + i + " = " + this.cellVoltages[i] + "(" + bytes[2 + i * 2] + ", " + bytes[2 + i * 2 + 1] ) + ")"
+			// console.log( "Cell voltage " + i + " = " + this.cellVoltages[i] + "(" + bytes[2 + i * 2] + ", " + bytes[2 + i * 2 + 1] ) + ")"
 		}
 
-		console.log( "Sum of cells: " + cellSum )
+		// console.log( "Sum of cells: " + cellSum )
 		tempTemp = (1.78 / ((bytes[14] * 256 + bytes[15] + 2) / 33046.0) - 3.57);
 		
 		tempTemp = tempTemp * 1000;
 		logTempTemp = Math.log( tempTemp );
 		tempCalc = 1.0 / (0.0007610373573 + (0.0002728524832 * logTempTemp) + (logTempTemp ** 3) * 0.0000001022822735);
 		this.temperatures[0] = tempCalc - 273.15
-		console.log( "Temp1 bytes=" + bytes[14] + ", " + bytes[15] + " = " + (bytes[14] * 256 + bytes[15]) )
+		// console.log( "Temp1 bytes=" + bytes[14] + ", " + bytes[15] + " = " + (bytes[14] * 256 + bytes[15]) )
 
 		// TODO: This is from Arduino code, the constant for division is different above and below, which is right? Also the +2 looks strange
 		tempTemp = (1.78 / ((bytes[16] * 256 + bytes[17] + 2) / 33068.0) - 3.57);
@@ -215,11 +225,22 @@ class BMSBoard
 		logTempTemp = Math.log( tempTemp );
 		tempCalc = 1.0 / (0.0007610373573 + (0.0002728524832 * logTempTemp) + (logTempTemp ** 3) * 0.0000001022822735);
 		this.temperatures[1] = tempCalc - 273.15
-		console.log( "Temp1 bytes=" + bytes[16] + ", " + bytes[17] + " = " + (bytes[16] * 256 + bytes[17]) )
+		// console.log( "Temp1 bytes=" + bytes[16] + ", " + bytes[17] + " = " + (bytes[16] * 256 + bytes[17]) )
 
-		console.log( "Temperatures: " + this.temperatures[0] + ", " + this.temperatures[1] )
+		// console.log( "Temperatures: " + this.temperatures[0] + ", " + this.temperatures[1] )
 	
 		//turning the temperature wires off here seems to cause weird temperature glitches
+	}
+
+	getMinVoltage()
+	{
+		console.log( "Module min voltage: " + Math.min( ...this.cellVoltages ) );
+		return Math.min( ...this.cellVoltages );
+	}
+
+	getMaxTemperature()
+	{
+		return Math.max( ...this.temperatures );
 	}
 
 	async readFaults()
@@ -239,15 +260,16 @@ class BMSBoard
 			(ts2connected ? (1 << 1) : 0) |
 			(ts1connected ? 1 : 0);
 
-		console.log( "writeIOControl: ts1connected = " + ts1connected + ", value=" + value );
+		// console.log( "writeIOControl: ts1connected = " + ts1connected + ", value=" + value );
 		return this.writeByteToRegister( BMSBoard.Registers.REG_IO_CONTROL, value );
 	}
 
 	async readIOControl()
 	{
-		console.log( "readIOControl: entry" );
+		// console.log( "readIOControl: entry" );
 		return this.readBytesFromRegister( BMSBoard.Registers.REG_IO_CONTROL, 1 )
-			.then( (bytes) => {console.log( "IOControl bytes=" + bytes ); return new BQIOControl( bytes[0] ) } )
+			.then( (bytes) => { /* console.log( "IOControl bytes=" + bytes ); */
+				return new BQIOControl( bytes[0] ) } )
 	}
 	
 	async writeADCControl( adcOn, tempSensor1On, tempSensor2On, gpaiOn, cellCount )
@@ -262,13 +284,39 @@ class BMSBoard
 		if( cellCount > 1 && cellCount <= 6 )
 			value |= (cellCount - 1);
 		
-		console.log( "writeADCControl(tempSensor1On=" + tempSensor1On+ "), value=" + value.toString(2) );
+		// console.log( "writeADCControl(tempSensor1On=" + tempSensor1On+ "), value=" + value.toString(2) );
 		return this.writeByteToRegister( BMSBoard.Registers.REG_ADC_CONTROL, value );
 	}
 
 	async writeADCConvert( initiateConversion )
 	{
 		return this.writeByteToRegister( BMSBoard.Registers.REG_ADC_CONVERT, initiateConversion ? 1 : 0 )
+	}
+
+	// cells is array of 6 booleans, true to balance
+	async balance( cells )
+	{
+		var regValue = 0
+
+		for( var i = 0; i < 6; i++)
+			if( cells[i] )
+				regValue = regValue | (1 << i);
+
+		console.log( "Module " + this.id + ": Writing " + regValue.toString(16) + " to REG_BAL_CTRL");
+		return this.writeByteToRegister( BMSBoard.Registers.REG_BAL_CTRL, regValue );
+	}
+
+	// if not isSeconds, then the count is in minutes
+	async setBalanceTimer( count, isSeconds )
+	{
+		if( count >= 64 )
+			throw "Invalid count, must be 0-63"
+
+		var regValue = count | (isSeconds ? 0 : (1 << 7));
+
+		console.log( "Setting balance timer: " + count + (isSeconds ? " s" : " min"));
+
+		return this.writeByteToRegister( BMSBoard.Registers.REG_BAL_TIME, regValue );
 	}
 
 	toString()
@@ -408,6 +456,13 @@ class BQAlerts
 		return this.byteValue;
 	}
 
+	equals( other )
+	{
+		var result = (other.byteValue == this.byteValue)
+
+		return result;
+	}
+
 	toString()
 	{
 		var result = "Alerts: ";
@@ -436,7 +491,15 @@ class BQAlerts
 
 class BQFaults
 {
+	static none = new BQFaults( 0 )
+
 	constructor(byteValue) { this.byteValue = byteValue; }
+
+	equals( other )
+	{
+		return other.byteValue == this.byteValue;
+	}
+
 	toString()
 	{
 		var result = "Faults: ";
@@ -464,33 +527,40 @@ class BMSPack
 	static MAX_MODULE_ADDR = 0x3e
 	static BROADCAST_ADDR = 0x3f
  
-	
 	constructor( serialDevice )
 	{
 		this.serial = new SerialWrapper(serialDevice, 612500 );
 		this.modules = {}
+		this.lock = new AsyncLock();
 	}
 
 	async init()
 	{
-		console.log( "Pack.init entry" );
-		await this.serial.open()
+		// console.log( "Pack.init entry" );
+		return this.serial.open()
 			.then( () => { return this.findBoards() } )
-		console.log( "Pack.init exit" );
+		// console.log( "Pack.init exit" );
+	}
+
+	close()
+	{
+		this.serial.close();
 	}
 
 	async findBoards()
 	{
+		// lock handling is in pollModule
 		var x;
-		var modules = []
+		// var modules = []
 
-		console.log( "findBoards entry" );
+		// console.log( "findBoards entry" );
 		for( x = 1; x < BMSPack.MAX_MODULE_ADDR; x++ )
 			await this.pollModule(x)
-				.then( module => {if( module ) { console.log( "module: " + module ); this.modules[ x ] = module; } } );
+				.then( module => {if( module ) { /* console.log( "module: " + module ); */ 
+							this.modules[ x ] = module; } } );
 		console.log( "findBoards exit" );
-		console.log( "this.moduls=" );
-		console.log( this.modules );
+		console.log( "this.modules=" + this.modules );
+		// console.log( this.modules );
 	}
 
 	async renumberBoardIDs()
@@ -500,54 +570,164 @@ class BMSPack
 	
 	async wakeBoards()
 	{
-		return this.writeByteToDeviceRegister( BMSPack.BROADCAST_ADDR, BMSBoard.Registers.REG_IO_CONTROL, 0 )
+		return this.lock.acquire( 'key', async () => this.writeByteToDeviceRegister( BMSPack.BROADCAST_ADDR, BMSBoard.Registers.REG_IO_CONTROL, 0 ))
 			.then( () => sleep(2) )
 			.then( () => this.checkAllStatuses() )
 			.then( () => this.readAllIOControl() )
-			.then( () => this.writeByteToDeviceRegister( BMSPack.BROADCAST_ADDR, BMSBoard.Registers.REG_ALERT_STATUS, 0x04 ) )
+			.then( () => this.lock.acquire( 'key', async () => this.writeByteToDeviceRegister( BMSPack.BROADCAST_ADDR, BMSBoard.Registers.REG_ALERT_STATUS, 0x04 ) ))
 			.then( () => sleep(2) )
 			.then( () => this.checkAllStatuses() )
-			.then( () => this.writeByteToDeviceRegister( BMSPack.BROADCAST_ADDR, BMSBoard.Registers.REG_ALERT_STATUS, 0 ))
+			.then( () => this.lock.acquire( 'key', async () => this.writeByteToDeviceRegister( BMSPack.BROADCAST_ADDR, BMSBoard.Registers.REG_ALERT_STATUS, 0 )))
 			.then( () => sleep(2) )
 			.then( () => this.checkAllStatuses() )
-			.then( () => console.log( "Boards should be awake" ) );
+			.then( () => console.log( "Boards should be awake" ) )
+	}
+
+	async sleep()
+	{
+		// puts all boards to slee
+		return Object.values( this.modules ).forEach( async module => await module.sleep() );
+	}
+
+	hasAlert()
+	{
+		for( var index in this.modules )
+			if( !this.modules[ index ].alerts.equals( BQAlerts.none ) )
+				return true;
+		return false;
+	}
+	
+	hasFault()
+	{
+		for( var index in this.modules )
+			if( !this.modules[ index ].faults.equals( BQFaults.none ) )
+				return true;
+		return false;
+	}
+
+	getMinVoltage()
+	{
+		console.log( "getMinVoltage: values=" + Object.values(this.modules) );
+		return Object.values(this.modules).reduce( (result, module) => { 
+			var v = module.getMinVoltage();
+			if( v < result )
+				return v;
+			else
+				return result;
+			}, 5);
+	}
+
+	getMaxTemperature()
+	{
+		return Object.values(this.modules).reduce( (result, module) => { 
+			var temperature = module.getMaxTemperature();
+			if( temperature > result ) 
+				return temperature;
+			else
+				return result;
+			}, 0);
+	}
+
+	// 
+	async setBalanceTimer( seconds )
+	{
+		const isSeconds = seconds < 63;
+		var count;
+
+		if( isSeconds )
+			count = seconds;
+		else
+			count = seconds / 60;
+
+		for( var index in this.modules )
+			await this.lock.acquire( 'key', () => this.modules[index].setBalanceTimer( count, isSeconds ) );
+	}
+
+	// cells is two-dimensional array of booleans
+	async balance( cells )
+	{
+		for( var index in this.modules )
+		{
+			const subCells = cells[index];
+
+			console.log( "bms.balance: index=" + index + ", cells=" + cells + ", subCells=" + subCells)
+			if(subCells.reduce( (acc, current) => current || acc, false))
+			{
+				let success = false;
+				while( !success )
+					try {
+						await this.lock.acquire( 'key', () => this.modules[index].balance( subCells ) )
+						success = true;
+					}
+					catch( error )
+					{
+						// todo: limit number of retries
+						console.log( "Call to balance module " + index + " failed.: " + error.stack + ", retrying");
+						await sleep( 50 );
+					}
+			}
+		}
+	}
+
+	async stopBalancing()
+	{
+		const falses = [ false, false, false, false, false, false ];
+
+		for( var index in this.modules )
+			await this.lock.acquire( 'key', () => this.modules[index].balance( falses ) );
 	}
 
 	async checkAllStatuses()
 	{
 		for( var index in this.modules ) 
 		{ 
-			var faults = await this.modules[ index ].readStatus();
+			var faults = await this.lock.acquire( 'key', () => this.modules[ index ].readStatus() );
 			// console.log( "Module " + index + ": " + faults );
 		}
 	}
-	async readAllIOControl()
+
+	async readAll()
 	{
-		for( var index in this.modules ) 
-		{ 
-			var ioc = await this.modules[ index ].readIOControl();
-			console.log( "Module " + index + ": " + ioc );
+		for( var key in this.modules )
+		{
+			var module = this.modules[key];
+			await this.lock.acquire( 'key', () => module.readStatus() // this reads faults and alerts
+				.then( () => module.readValues() )); // this reads temperatures and voltages
 		}
 	}
-	
+
+	async readAllIOControl()
+	{
+		for( var index in this.modules )
+		{
+			var ioc = await this.lock.acquire( 'key', () => this.modules[ index ].readIOControl() );
+			// console.log( "Module " + index + ": " + ioc );
+		}
+	}
+
 	async pollModule(number)
 	{
 		var sendData = [number << 1,0,1] // bytes to send
 
-		await this.serial.write( sendData );
-		await sleep(20);
-		
-		var reply = this.serial.readAll();
-		if( reply.length > 4 )
+		return this.lock.acquire( 'key', async () => {
+			await this.serial.write( sendData );
+			await sleep(20);
+
+			return this.serial.readAll();
+		})
+		.then( (reply) => 
 		{
-			console.log( "Found module #" + number + ": " + reply )
-			return new BMSBoard( this, number );
-		}
-		else
-		{
-			// console.log( "No module #" + number );
-			return null;
-		}
+			if( reply.length > 4 )
+			{
+				// console.log( "Found module #" + number + ": " + reply )
+				return new BMSBoard( this, number );
+			}
+			else
+			{
+				// console.log( "No module #" + number );
+				return null;
+			}
+		})
 	}
 
 	crc( data )
@@ -571,7 +751,7 @@ class BMSPack
 			return crc;
 		}, 0x00 );
 
-		console.log( "CRC on " + data + " = 0x" + finalCRC.toString(16) );
+		// console.log( "CRC on " + data + " = 0x" + finalCRC.toString(16) );
 
 		return finalCRC
 	}
@@ -580,15 +760,17 @@ class BMSPack
 	{
 		var sendData = [device << 1,register,byteCount] // bytes to send
 
-		console.log( "sendData=" + sendData );
+		// console.log( "sendData=" + sendData );
 
 		// TODO: add CRC check, retry on failed, return as soon as all data received
 		return this.serial.write( sendData )
-			.then( () => { return sleep( 20 /* 2*((byteCount + 4) / 8 + 1) */ ) } )
+			.then( () => { // increased time from 20 to 40 ms here 
+					return sleep( 40 /* 2*((byteCount + 4) / 8 + 1) */ ) 
+				} )
 			.then( () => {
 				var data = this.serial.readAll();
 				var crc = this.crc( data.slice(0,byteCount + 3 ) )
-				console.log( "Received data=" + data );
+				// console.log( "Received data=" + data );
 				if( data.length == byteCount + 4 )
 				{
 					if( data[0] != sendData[0])
@@ -599,26 +781,27 @@ class BMSPack
 						throw "third byte is " + data[2] + ", not byte count " + byteCount;
 					if( data[ data.length - 1 ] != crc )
 						throw "last byte is " + data[data.length-1] + ", not expected crc " + crc;
-					console.log( "readBytes... returning" );
+					// console.log( "readBytes... returning" );
 					return data.slice(3, 3 + byteCount);
 				}
 				else
-					throw "Expected " + (byteCount + 3) + " bytes, got " + data.length;
+					throw "Expected " + (byteCount + 4) + " bytes, got " + data.length;
 			} )
 	}
 
 	async writeByteToDeviceRegister( device, register, byte )
 	{
 		var sendData = [ (device << 1) | 1, register, byte] // bytes to send
-		console.log( "writeBytesToDeviceRegister: register=" + register );
+		// console.log( "writeBytesToDeviceRegister: register=" + register );
 
 		sendData.push( this.crc( sendData ) );
-		console.log( "writeBytes: sendData: " + sendData );
+		// console.log( "writeBytes: sendData: " + sendData );
+		this.serial.flushInput();
 		return this.serial.write( sendData )
 			.then( () => sleep( 2 * ( sendData.length / 8 + 1) ) )
 			.then( () => {
 				var reply = this.serial.readAll();
-				console.log( "writeBytes: received " + reply );
+				// console.log( "writeBytes: received " + reply );
 
 				if( reply.length != sendData.length )
 					throw "Expected " + sendData.length + " bytes, got " + reply.length;
@@ -628,7 +811,7 @@ class BMSPack
 				})
 	}
 }
-
+/*
 var pack = new BMSPack("/dev/serial0");
 
 initPack( pack )
@@ -664,7 +847,14 @@ async function initPack(pack)
 	await pack.init();
 	console.log( "after pack.init()" );
 }
-
+*/
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+module.exports = {
+	BMSPack: BMSPack,
+	BQAlerts: BQAlerts,
+	BQFaults: BQFaults
+}
+

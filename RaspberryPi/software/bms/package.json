@@ -13,6 +13,7 @@
   "author": "Erland Lewin <erland@lewin.nu>",
   "license": "ISC",
   "dependencies": {
+    "async-lock": "^1.2.8",
     "serialport": "^9.0.2"
   }
 }
