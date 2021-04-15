@@ -1,0 +1,45 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2708";
+
+	fragment@0 {
+		target= <&uart1>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart1_pins>;
+			status="okay";
+		};
+	};
+
+	fragment@1 {
+    		target = <&gpio>;
+		__overlay__ {
+      			uart1_pins: uart1_pins {
+        			brcm,pins = <14 15>; /* UART1:  TX1 RX1 */
+        			brcm,function = <2>;    /* 2=ALT5, 7=ALT3, see https://www.kernel.org/doc/Documentation/devicetree/bindings/pinctrl/brcm,bcm2835-gpio.txt */
+        			brcm,pull = <0 2>;
+      			};
+    		};
+  	};
+
+//	fragment@2 {
+//    		target-path = "/aliases";
+//    		__overlay__ {
+//      			bms = "/soc/serial@7e215040";
+//			// can we do an alias for a GPIO pin?
+//      			// bms_nFault = "/soc/";
+//    		};
+//  	};
+//	fragment@3 {
+//		target = <&gpio>;
+//		__overlay__ {
+//			bms_fault: bms_fault {
+//				brcm,pins = <25>;
+//				brcm,function = <0>; // 0=in
+//				brcm,pull = <2>; // 2 = pull up (would down be better in case of broken wire?)
+//			};
+//		};
+//	};
+};

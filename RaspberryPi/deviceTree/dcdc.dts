@@ -1,0 +1,29 @@
+// Definitions for gpio-poweroff module
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2708";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			dcdc_ctrl: dcdc_ctrl {
+				compatible = "gpio-poweroff";
+				gpios = <&gpio 23 1>;
+				force;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&gpio>;
+		__overlay__ {
+			dcdc_gpio: dcdc_gpio {
+				brcm,pins = <22 23>;
+				brcm,function = <1 1>; // out
+			};
+		};
+	};
+
+};

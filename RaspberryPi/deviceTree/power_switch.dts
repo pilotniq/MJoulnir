@@ -1,0 +1,27 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2708";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			switch: switch {
+				gpios = <&gpio 24 0>;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&gpio>;
+		__overlay__ {
+			switch_gpio: switch_gpio {
+				brcm,pins = <24>;
+				brcm,function = <0>; // 0=in
+				brcm,pull = <2>; // 2 = pull up
+			};
+		};
+	};
+
+};

@@ -1,0 +1,121 @@
+########################################################################
+# EEPROM settings text file
+#
+# Edit this file for your particular board and run through eepmake tool,
+# then use eepflash tool to write to attached HAT ID EEPROM 
+#
+# Tools available:
+#  eepmake   Parses EEPROM text file and creates binary .eep file
+#  eepdump   Dumps a binary .eep file as human readable text (for debug)
+#  eepflash  Write or read .eep binary image to/from HAT EEPROM
+#
+########################################################################
+
+########################################################################
+# Vendor info
+
+# 128 bit UUID. If left at zero eepmake tool will auto-generate
+# RFC 4122 compliant UUID
+# Generated at uuidgenerator.net/version4
+# product_uuid 00000000-0000-0000-0000-000000000000
+product_uuid b5aac2c2-8b78-452f-b426-2cc4ccb1fa91
+
+# 16 bit product id
+product_id 0x0001
+
+# 16 bit product version
+product_ver 0x0001
+
+# ASCII vendor string  (max 255 characters)
+vendor "Erland Lewin"
+
+# ASCII product string (max 255 characters)
+product "Electric Vehicle Hat"
+
+# Custom binary data
+custom_data
+0000
+end
+
+########################################################################
+# GPIO bank settings, set to nonzero to change from the default.
+# NOTE these setting can only be set per BANK, uncommenting any of
+# these will force the bank to use the custom setting.
+
+# drive strength, 0=default, 1-8=2,4,6,8,10,12,14,16mA, 9-15=reserved
+gpio_drive 0
+
+# 0=default, 1=slew rate limiting, 2=no slew limiting, 3=reserved
+gpio_slew 0
+
+# 0=default, 1=hysteresis disabled, 2=hysteresis enabled, 3=reserved
+gpio_hysteresis 0
+
+# If board back-powers Pi via 5V GPIO header pins:
+# 0 = board does not back-power
+# 1 = board back-powers and can supply the Pi with a minimum of 1.3A
+# 2 = board back-powers and can supply the Pi with a minimum of 2A
+# 3 = reserved
+# If back_power=2 then USB high current mode will be automatically 
+# enabled on the Pi
+back_power 2
+
+########################################################################
+# GPIO pins, uncomment for GPIOs used on board
+# Options for FUNCTION: INPUT, OUTPUT, ALT0-ALT5
+# Options for PULL: DEFAULT, UP, DOWN, NONE
+# NB GPIO0 and GPIO1 are reserved for ID EEPROM so cannot be set
+
+#         GPIO  FUNCTION  PULL
+#         ----  --------  ----
+# 2: PROXIMITY_0
+#setgpio  2     INPUT     DEFAULT
+# 3: TYPE2_PILOT_SEND
+setgpio  3     OUTPUT     DEFAULT
+# TXD3 for GPS
+# Alt4 for pin 4 is TXD3
+# Alt4 for pin 5 is RXD3
+setgpio  4     	ALT4     DEFAULT
+setgpio  5      ALT4     DEFAULT
+# Unused
+#setgpio  6     INPUT     DEFAULT
+#setgpio  7     INPUT     DEFAULT
+# Serial 4 for VESC
+# Alt 4 for pin 8 is TXD4
+# Alt 4 for pin 9 is RXD4
+setgpio  8     ALT4     DEFAULT
+setgpio  9     ALT4     DEFAULT
+# Contactor
+setgpio  10    OUTPUT     DOWN
+# Unused
+#setgpio  11    INPUT     DEFAULT
+#setgpio  12    INPUT     DEFAULT
+#setgpio  13    INPUT     DEFAULT
+# ALT5 for pin 14 is TXD1
+# ALT5 for pin 15 is RXD1
+setgpio  14   ALT5	DEFAULT
+setgpio  15   ALT5      DEFAULT
+# 16: SPI1_CS0 = SPI1_CE2_N (ALT4)
+setgpio  16    INPUT     DEFAULT
+# 17: PROXIMITY_1
+#setgpio  17    INPUT     DEFAULT
+# 18: PILOT_OUT
+#setgpio  18    INPUT     DEFAULT
+# 19: SPI1_MISO(ALT4)
+setgpio  19    ALT4     DEFAULT
+# 20: SPI1_MOSI (ALT4)
+setgpio  20    ALT4     DEFAULT
+# 21: SPI1_SCLK (ALT4)
+setgpio  21    ALT4     DEFAULT
+# 22: Precharge
+setgpio  22    OUTPUT     DOWN
+# 23: ON
+setgpio  23    OUTPUT     UP
+# 24: SW_PWR_SWITCH_2_A
+# setgpio  24    INPUT     UP
+# 25: BMS_nFault
+setgpio  25    INPUT     UP
+# 26: ADC_nIRQ
+setgpio  26    INPUT     UP
+# 27: Charger Power Sense
+#setgpio  27    INPUT     DEFAULT
