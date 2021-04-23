@@ -1,15 +1,19 @@
-import * as BoatModel from "./boatModel"
-// import * as Model from './model';
 import * as BMS from 'tesla-slave-bms';
+import * as events from 'events';
 
 let cancel = false;
 let cancelled = false;
 
-export class BatteryReader
+export interface UpdateData {
+	voltages: number[][],
+	temperatures: number[][],
+	fault: boolean,
+	alert: boolean,
+	update_imbalance: boolean
+}
+export class BatteryReader extends events.EventEmitter
 {
 	batteryPack: BMS.BMSPack;
-	model: BoatModel.BoatModel;
-	batteryState: BoatModel.BatteryState
 	timeout?: number;
 	intervalSeconds?: number; // just some value before started to make TS happy 
 	retry_count = 0;
@@ -18,11 +22,10 @@ export class BatteryReader
 	cancelPromise?: Promise<void>;
 	update_imbalance = false
 
-	constructor( serialPortName: string, _model: BoatModel.BoatModel )
+	constructor( serialPortName: string)
 	{
+		super()
 		this.batteryPack = new BMS.BMSPack( serialPortName );
-		this.model = _model;
-		this.batteryState = _model.batteryState
 	}
 
 	close(): void
@@ -94,9 +97,9 @@ export class BatteryReader
 			.then( () => {
 				this.retry_count = 0;
 				let moduleIndex = 0;
-				const voltagesArray = this.model.batteryState.voltages;
-				const temperaturesArray = this.model.batteryState.temperatures;
 
+				const voltagesArray: number[][] = []
+				const temperaturesArray: number[][] = []
 				Object.keys(this.batteryPack.modules).sort().forEach( key => { 
 					if( voltagesArray.length <= moduleIndex )
 						voltagesArray.push( this.batteryPack.modules[Number(key)].cellVoltages );
@@ -110,19 +113,17 @@ export class BatteryReader
 					moduleIndex++;
 				});
 
-				// console.log( "BatteryReader: new voltages=" + JSON.stringify( this.batteryPack.modules ));
-				// console.log( "BatteryReader: model voltages=" + JSON.stringify( voltagesArray ));
-				this.batteryState.fault = this.batteryPack.hasFault();
-				this.batteryState.alert = this.batteryPack.hasAlert();
-
-				this.batteryState.isValid = true;
-
-				if( this.update_imbalance )
-				{
-					this.batteryState.updateImbalance()
-					this.update_imbalance = false
+				const data: UpdateData = {
+					voltages: voltagesArray,
+					temperatures: temperaturesArray,
+					fault: this.batteryPack.hasFault(),
+					alert: this.batteryPack.hasAlert(),
+					update_imbalance: this.update_imbalance
 				}
-				this.batteryState.signalUpdated();
+
+				this.emit('update', data );
+
+				
 				this.timeout = setTimeout( updateReader, this.intervalSeconds! * 1000, this );
 			} )
 			.catch( (error) => { 

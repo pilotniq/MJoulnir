@@ -148,19 +148,19 @@ class Packet
 							"nextState": "GetValues_temp_mos1"}},
 				"GetValues_temp_mos1": { func: Packet.parseMulti,
 						"context": {
-							"field": "temperature_mos1",
+							"field": "temp_mos_1",
 							"byte_count": 2,
 							"scale": 10,
 							"nextState": "GetValues_temp_mos2"}},
 				"GetValues_temp_mos2": { func: Packet.parseMulti,
 						"context": {
-							"field": "temperature_mos2",
+							"field": "temp_mos_2",
 							"byte_count": 2,
 							"scale": 10,
 							"nextState": "GetValues_temp_mos3"}},
 				"GetValues_temp_mos3": { func: Packet.parseMulti,
 						"context": {
-							"field": "temperature_mos3",
+							"field": "temp_mos_3",
 							"byte_count": 2,
 							"scale": 10,
 							"nextState": "GetValues_vd"}},

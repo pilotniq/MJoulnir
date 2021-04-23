@@ -7,34 +7,22 @@ async function delay(seconds: number)
 	return new Promise<void>( resolve => setTimeout( resolve, seconds * 1000 ) );
 }	
 
-BoatModel.boatModel.batteryState.onChanged( () => {
-	console.log( "Battery: SOC=" + (BoatModel.boatModel.batteryState.soc_from_min_voltage() * 100).toFixed(0) + "%, " + 
-		"voltage: " + BoatModel.boatModel.batteryState.getTotalVoltage()?.toFixed(1) + " V, " +
-		"min cell voltage= " + BoatModel.boatModel.batteryState.getMinCellVoltage()?.toFixed(3) + " V ");
+const boatModel = new BoatModel.BoatModel("/dev/serial0")
+
+boatModel.battery.onChanged( () => {
+	console.log( "Battery: SOC=" + (boatModel.battery.soc_from_min_voltage() * 100).toFixed(0) + "%, " + 
+		"voltage: " + boatModel.battery.getTotalVoltage()?.toFixed(1) + " V, " +
+		"min cell voltage= " + boatModel.battery.getMinCellVoltage()?.toFixed(3) + " V ");
 });
 
-const statemachine = new StateMachine.ElectricDrivetrainStateMachine( BoatModel.boatModel,
-	"/dev/serial0" );
+const statemachine = new StateMachine.ElectricDrivetrainStateMachine( boatModel );
 
-statemachine.start();
-BLECentral.start(BoatModel.boatModel);
+boatModel.start()
+	.then( () => statemachine.start() )
 
-/*
-let batteryReader: BatteryReader.BatteryReader | undefined = undefined;
-// let vescReader: VESC.VESCtalker;
 
-function start()
-{
+	BLECentral.start(boatModel, statemachine);
 
-	batteryReader = new BatteryReader.BatteryReader( "/dev/serial0", BoatModel.boatModel);
-	batteryReader.start(60); // check battery once a minute
-
-	// while( !BLECentral.isAdvertising )
-
-	// vescReader = new VESC.VESCtalker( BoatModel.boatModel );
-	StateMachine.start(BoatModel.boatModel);
-}
-*/
 /*
 function stop()
 {
@@ -59,6 +47,3 @@ async function waitForAdvertising(): Promise<void>
 {
 	return new Promise( (resolve, reject) => waitForAdv2( resolve ) );
 }
-
-
-// waitForAdvertising().then( () => start() );

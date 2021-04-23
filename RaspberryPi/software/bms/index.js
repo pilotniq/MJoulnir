@@ -302,7 +302,7 @@ class BMSBoard
 			if( cells[i] )
 				regValue = regValue | (1 << i);
 
-		console.log( "Module " + this.id + ": Writing " + regValue.toString(16) + " to REG_BAL_CTRL");
+		// console.log( "Module " + this.id + ": Writing " + regValue.toString(16) + " to REG_BAL_CTRL");
 		return this.writeByteToRegister( BMSBoard.Registers.REG_BAL_CTRL, regValue );
 	}
 
@@ -314,7 +314,7 @@ class BMSBoard
 
 		var regValue = count | (isSeconds ? 0 : (1 << 7));
 
-		console.log( "Setting balance timer: " + count + (isSeconds ? " s" : " min"));
+		// console.log( "Setting balance timer: " + count + (isSeconds ? " s" : " min"));
 
 		return this.writeByteToRegister( BMSBoard.Registers.REG_BAL_TIME, regValue );
 	}
@@ -637,7 +637,7 @@ class BMSPack
 		if( isSeconds )
 			count = seconds;
 		else
-			count = seconds / 60;
+			count = Math.ceil(seconds / 60);
 
 		for( var index in this.modules )
 			await this.lock.acquire( 'key', () => this.modules[index].setBalanceTimer( count, isSeconds ) );
@@ -650,7 +650,6 @@ class BMSPack
 		{
 			const subCells = cells[index];
 
-			console.log( "bms.balance: index=" + index + ", cells=" + cells + ", subCells=" + subCells)
 			if(subCells.reduce( (acc, current) => current || acc, false))
 			{
 				let success = false;

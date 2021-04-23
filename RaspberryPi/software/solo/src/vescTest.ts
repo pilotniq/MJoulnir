@@ -8,8 +8,8 @@ vesc.on( 'connected', connected );
 
 console.log( "noble state is " + noble.state );
 // noble.on("stateChange", (state: string) => {
-    vesc.ble_connect( ).
-        then( () => { console.log( "setInterval" ); setInterval( ()=>vesc.sendCANCharge( 60, 1, false), 1000) });
+//    vesc.ble_connect( ).
+//        then( () => { console.log( "setInterval" ); setInterval( ()=>vesc.sendCANCharge( 60, 1, false), 1000) });
         
 
 function connected(): void 

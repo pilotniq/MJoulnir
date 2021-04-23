@@ -1,13 +1,10 @@
 import rfdc from "rfdc";
 import * as BoatModel from "./boatModel"
-import * as Hardware from "./hardware"
 import * as VESC from './vesc';
 import * as Charger from './charger';
-import * as BatteryReader from './batteryReader';
+import { timeStamp } from "node:console";
 
 const clone = rfdc();
-
-// import { assert } from "node:console";
 
 function assert(value: boolean): void 
 {
@@ -41,7 +38,7 @@ class State<StateMachineType extends StateMachine>
 	}
 }
 
-class MJoulnirState extends State<ElectricDrivetrainStateMachine>
+abstract class MJoulnirState extends State<ElectricDrivetrainStateMachine>
 {
 	stateID: BoatModel.State;
 
@@ -57,7 +54,19 @@ class MJoulnirState extends State<ElectricDrivetrainStateMachine>
 		super.enter()
 		this.stateMachine.model.state.set( this.stateID );
 	}
+
+	abstract canEnter(): boolean
+
+	// return true if permitted
+	requestTransition( nextState: MJoulnirState ): boolean
+	{
+		return false
+	}
 }
+
+// This is actually the idle state? 
+// require App to switch from this state to armed?
+// that would work as a "key" to the boat as well
 class BootState extends MJoulnirState
 {
 	boundListener: () => void;
@@ -68,37 +77,43 @@ class BootState extends MJoulnirState
 		this.boundListener = this.updated.bind( this );
 	}
 
+	canEnter(): boolean
+	{
+		return true;
+	}
+
 	enter()
 	{
-		Hardware.setPrecharge( 0 );
-		Hardware.setContactor( 0 );
+		const hardware = this.stateMachine.model.hardware
+		hardware.setPrecharge( false );
+		hardware.setContactor( false );
 	
-		if( this.stateMachine.model.batteryState.isValid )
+		if( this.stateMachine.model.battery.isValid )
 			this.checkBattery()
 			// transition to the next state
 			// this.stateMachine.transitionTo( this.stateMachine.checkBatteryState );
 		else
-			this.stateMachine.model.batteryState.onChanged( this.boundListener );
+			this.stateMachine.model.battery.onChanged( this.boundListener );
 	}
 
 	updated()
 	{
 		// battery model has been updated.
-		if( !this.stateMachine.model.batteryState.isValid )
+		if( !this.stateMachine.model.battery.isValid )
 			return;
 
-		this.stateMachine.model.batteryState.updateImbalance()
+		this.stateMachine.model.battery.updateImbalance()
 
 		// transition to the next state
 		// unsubscribe to onChanged
-		this.stateMachine.model.batteryState.unOnChanged( this.boundListener );
+		this.stateMachine.model.battery.unOnChanged( this.boundListener );
 
 		this.checkBattery();
 	}
 
 	checkBattery()
 	{
-		const batteryState = this.stateMachine.model.batteryState;
+		const batteryState = this.stateMachine.model.battery;
 
 		if( batteryState.fault || batteryState.alert)
 		{
@@ -136,6 +151,11 @@ class BatteryErrorState extends MJoulnirState
 		super( BoatModel.State.Error, machine, "Battery Error");
 	}
 
+	canEnter(): boolean
+	{
+		return true;
+	}
+
 	enter(): void 
 	{
 		// TODO: listen for changes to battery if it becomes OK again
@@ -151,16 +171,25 @@ class TurnOnContactorState extends MJoulnirState
 		super( BoatModel.State.Booting, machine, "Turn On Contactor");
 	}
 
+	canEnter(): boolean
+	{
+		// maybe validate that battery has sufficient charge OR charger is online
+		return true;
+	}
+
 	enter(): void 
 	{
 		super.enter();
+
 		// turn on precharge
-		Hardware.setPrecharge( 1 );
+		const hardware = this.stateMachine.model.hardware
+
+		hardware.setPrecharge( true );
 		
 		this.promise = sleep( 4 )
 		// turn on contactor
 			.then( () => { 
-					Hardware.setContactor( 1 );
+					hardware.setContactor( true );
 					this.stateMachine.vesc = new VESC.VESCtalker( this.stateMachine.model );
 					this.stateMachine.charger = new Charger.Charger( this.stateMachine.vesc, this.stateMachine.model );
 					// wait 1 second
@@ -168,10 +197,11 @@ class TurnOnContactorState extends MJoulnirState
 				})
 			.then( () => { 
 				// turn off precharge
-				Hardware.setPrecharge( 0 );
+				hardware.setPrecharge( false );
 				// goto state idle
 				return this.stateMachine.transitionTo( this.stateMachine.armedState );
 				})
+			.catch(reason => console.log( "TurnOnContactorState enter failed: " + reason ))
 	}
 }
 
@@ -188,9 +218,16 @@ class ArmedState extends MJoulnirState
 	constructor(machine: ElectricDrivetrainStateMachine)
 	{
 		super( BoatModel.State.Armed, machine, "Armed");
+		
 		this.model = machine.model;
 		this.boundChargerListener = this.chargerChanged.bind( this );
 		this.boundBatteryListener = this.batteryChanged.bind( this );
+	}
+
+	canEnter(): boolean
+	{
+		// validate that battery has sufficient charge?
+		return true;
 	}
 
 	enter(): void 
@@ -198,7 +235,10 @@ class ArmedState extends MJoulnirState
 		super.enter();
 
 		this.model.charger.onChanged( this.boundChargerListener );
-		this.model.batteryState.onChanged( this.boundBatteryListener );
+		this.model.battery.onChanged( this.boundBatteryListener );
+		
+		this.stateMachine.vesc!.setPollMCValueInterval( 2 );
+
 		// TODO: monitor battery
 		// monitor power switch
 		// monitor VESC for going to active state
@@ -207,7 +247,8 @@ class ArmedState extends MJoulnirState
 	transitionTo(state: MJoulnirState): void
 	{
 		this.model.charger.unOnChanged( this.boundChargerListener );
-		this.model.batteryState.unOnChanged( this.boundBatteryListener );
+		this.model.battery.unOnChanged( this.boundBatteryListener );
+		this.stateMachine.vesc!.setPollMCValueInterval( 0 );
 
 		this.stateMachine.transitionTo( state )
 	}
@@ -223,7 +264,7 @@ class ArmedState extends MJoulnirState
 
 	batteryChanged(): void
 	{
-		const battery = this.stateMachine.model.batteryState
+		const battery = this.stateMachine.model.battery
 
 		console.log( "Battery changed: soc=" + (battery.soc_from_min_voltage()!*100).toFixed(0) + "-" 
 			+ (battery.soc_from_max_voltage()!*100).toFixed(0) + " %, " + 
@@ -235,8 +276,8 @@ class ArmedState extends MJoulnirState
 	considerAction(): void
 	{
 		const charger = this.stateMachine.model.charger
-		const soc = this.model.batteryState.soc_from_max_voltage()
-		const min_soc = this.model.batteryState.soc_from_min_voltage()
+		const soc = this.model.battery.soc_from_max_voltage()
+		const min_soc = this.model.battery.soc_from_min_voltage()
 
 		// TODO: also take battery state into account
 		if( charger.canCharge() )
@@ -244,15 +285,15 @@ class ArmedState extends MJoulnirState
 			console.log( "Armed state: Charger can charge, soc is " + (min_soc * 100).toFixed(0) + 
 				"-" + (soc * 100).toFixed(0) + " %");
 
-			if( soc < 0.70 )
+			if( soc < 0.79 ) // just while testing balancing, raise to 0.7?
 			{
 				// charge to 80% SOC, max 10 A from wall.
 				// 
 				this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
 				this.transitionTo( this.stateMachine.chargeState )
 			}
-			else if( !this.model.batteryState.isBalanced() && 
-			         this.model.batteryState.getMaxTemperature()! <= 24 )
+			else if( !this.model.battery.isBalanced() && 
+			         this.model.battery.getMaxTemperature()! <= 24 )
 				this.transitionTo( this.stateMachine.balancingState )
 		}
 		else
@@ -262,23 +303,36 @@ class ArmedState extends MJoulnirState
 
 class ChargeState extends MJoulnirState
 {
-	readonly MIN_CHARGING_CURRENT = 1.0;
+	static readonly MIN_CHARGING_CURRENT = 1.0;
+	static readonly CHARGE_PERIOD_DURATION = 8 * 60
+	static readonly PAUSE_PERIOD_DURATION = 2 * 60
 
-	readonly batteryState: BoatModel.BatteryState;
+	readonly battery: BoatModel.Battery;
 	readonly model: BoatModel.BoatModel;
 
 	boundChargerListener: () => void;
 	boundBatteryListener: () => void;
+
+	is_paused = false
+	pauseTimer?: NodeJS.Timer
+
 	charger?: Charger.Charger
+
+	resistances_estimated = false
 	current_limiting = false;
 	at_max_current = false;
+	at_max_current_time = 0;
+	resume_time = 0;
 	charging_current = 0;
+	latest_charging_current = 0;
 	target_soc?: number; // 0 to 1
-	target_max_cell_voltage?: number;
+	target_max_cell_voltage?: number
+	target_pack_voltage = 0
 	max_wall_current: number;
 	idle_cell_voltages?: number[][];
+	max_current_voltages?: number[][];
 	internal_resistance_timer?: NodeJS.Timer;
-	battery_updates_after_maxCurrent = 0;
+	// battery_updates_after_maxCurrent = 0;
 	prev_temperature?: number;
 	temperature_change = 0;
 	temperature_derating = 0;
@@ -288,7 +342,7 @@ class ChargeState extends MJoulnirState
 		super( BoatModel.State.Charging, machine, "Charge");
 
 		this.model = machine.model;
-		this.batteryState = machine.model.batteryState;
+		this.battery = machine.model.battery;
 		this.max_wall_current = 0;
 
 		this.boundChargerListener = this.chargerChanged.bind( this );
@@ -307,6 +361,12 @@ class ChargeState extends MJoulnirState
 		this.max_wall_current = max_wall_current;
 	}
 
+	canEnter(): boolean
+	{
+		// check if charger is online
+		return this.stateMachine.model.charger.canCharge();
+	}
+
 	// caller must set target_soc
 	enter( ): void 
 	{
@@ -314,9 +374,9 @@ class ChargeState extends MJoulnirState
 
 		this.charger = this.stateMachine.charger
 
-		this.battery_updates_after_maxCurrent = 0;
+		// this.battery_updates_after_maxCurrent = 0;
 		this.stateMachine.model.charger.onChanged( this.boundChargerListener );
-		this.stateMachine.model.batteryState.onChanged( this.boundBatteryListener )
+		this.stateMachine.model.battery.onChanged( this.boundBatteryListener )
 
 		// this.target_soc = target_soc;
 		assert( this.target_soc! >= 0 );
@@ -325,18 +385,23 @@ class ChargeState extends MJoulnirState
 		this.current_limiting = false;
 		this.charging_current = 0;
 		this.at_max_current = false;
+		this.resistances_estimated = false
 
 		// TODO: ramp up charging currenet
-		this.target_max_cell_voltage = BoatModel.BatteryState.estimateCellVoltageFromSOC( this.target_soc! );
+		this.target_max_cell_voltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.target_soc! );
 		console.log( "Charging: target max cell voltage is " + this.target_max_cell_voltage.toFixed(3) + " V" );
 
 		// TODO: monitor power switch
 		// TODO: disable VESC? monitor VESC for going to active state
 
-		this.idle_cell_voltages = clone(this.model.batteryState!.voltages)
+		this.idle_cell_voltages = clone(this.model.battery!.voltages)
 
 		// update battery state every second
-		this.stateMachine.batteryReader.setInterval( 1 );
+		this.battery.setPollingInterval( 1 );
+
+		assert(this.pauseTimer === undefined )
+		// setTimeout( this.estimateResistances.bind(this), 5000 );
+		// this.pauseTimer = setTimeout( this.pauseCharging.bind(this), ChargeState.CHARGE_PERIOD_DURATION * 1000 )
 
 		this.recalculateCharging();
 
@@ -349,16 +414,55 @@ class ChargeState extends MJoulnirState
 		// add timeout if battery data has not been updated in 5 minutes?
 	}
 
+	pauseCharging(): void
+	{
+		assert( !this.is_paused )
+
+		console.log( (new Date().toISOString()) + ": Pausing charging" )
+
+		this.is_paused = true
+
+		this.charger!.setChargingParameters( this.target_pack_voltage, this.charging_current, false );
+
+		console.log( "pauseCharging: starting pause timer for resume @ " + (new Date).toISOString() )
+		this.pauseTimer = setTimeout( this.resumeCharging.bind(this), ChargeState.PAUSE_PERIOD_DURATION * 1000 )
+	}
+
+	resumeCharging(): void
+	{
+		assert( this.is_paused )
+
+		console.log( (new Date().toISOString()) + ": Resuming charging")
+		this.is_paused = false
+
+		if( !this.resistances_estimated )
+		{
+			console.log( "Estimating resistances" )
+
+			this.battery.estimateResistances( this.latest_charging_current, this.battery.voltages, this.max_current_voltages! )
+			this.resistances_estimated = true
+		}
+
+		this.charger!.setChargingParameters( this.target_pack_voltage, this.charging_current, true );
+
+		this.resume_time = Date.now() / 1000.0
+
+		console.log( (new Date().toISOString()) + ": Starting pauseTimer for pause, duration=" + ChargeState.CHARGE_PERIOD_DURATION)
+		this.pauseTimer = setTimeout( this.pauseCharging.bind(this), ChargeState.CHARGE_PERIOD_DURATION * 1000 )
+	}
+
 	exit( nextState: MJoulnirState )
 	{
 		this.stateMachine.model.charger.unOnChanged( this.boundChargerListener );
-		this.stateMachine.model.batteryState.unOnChanged( this.boundBatteryListener )
+		this.stateMachine.model.battery.unOnChanged( this.boundBatteryListener )
+
+		clearTimeout( this.pauseTimer! )
 
 		console.log( "Turning off charger" );
 
 		this.charger!.setChargingParameters( 0, 0, false );
 
-		this.stateMachine.batteryReader.setInterval( 60 );
+		this.battery.setPollingInterval( BoatModel.Battery.DEFAULT_POLLING_INTERVAL );
 
 		if( !(this.internal_resistance_timer === undefined) )
 		{
@@ -371,7 +475,7 @@ class ChargeState extends MJoulnirState
 
 	recalculateCharging(): void
 	{
-		// Algorithm: charge until cell with highst voltage reaches 80% SOC
+		// Algorithm: charge until cell with highst voltage reaches this.target_soc (currently 80%) SOC
 		// which should be equivalent to 3.98 Volts per cell.
 		// get highest cell voltage. calculate diff to 3.98. Multiply by 
 		// number of cells (18). Use this as initial charging voltage.
@@ -381,8 +485,8 @@ class ChargeState extends MJoulnirState
 		// Voltage will increase by .07 mV.
 		// 1.5 Amps change will increase voltage by about 1 mV per cell
 
-		const targetCellVoltage = BoatModel.BatteryState.estimateCellVoltageFromSOC( this.target_soc! );
-		const maxCellVoltage = this.batteryState.getMaxCellVoltage()!
+		const targetCellVoltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.target_soc! );
+		const maxCellVoltage = this.battery.getMaxCellVoltage()!
 		// assert( maxCellVoltage <= targetCellVoltage );
 
 		if( maxCellVoltage > (targetCellVoltage + 0.001) )
@@ -394,30 +498,56 @@ class ChargeState extends MJoulnirState
 		}
 		const voltageDiff = targetCellVoltage - maxCellVoltage
 
-		const targetPackVoltage = this.batteryState.getTotalVoltage()! + 
+		this.target_pack_voltage = this.battery.getTotalVoltage()! + 
 			voltageDiff * 18;
 
-		assert( targetPackVoltage < 72 );
+		assert( this.target_pack_voltage < 73 );
 
 		if( !this.current_limiting && (voltageDiff <= 0.002) )
 		{
 			this.current_limiting = true;
-			this.at_max_current = true; // now if not earlier
+			if( !this.at_max_current )
+			{
+				// record voltages
+				this.max_current_voltages = clone( this.battery.voltages )
+				// pause charging
+				// measure idle voltages at resume
+				// calculate resistance from above voltages
+				if( !this.resistances_estimated )
+					this.pauseCharging()
+				// this.pauseTimer = setTimeout( this.pauseCharging.bind(this), ChargeState.CHARGE_PERIOD_DURATION * 1000 )				
+				this.at_max_current = true; // now if not earlier
+				this.at_max_current_time = Date.now() / 1000.0
+
+				return;
+			}
+
 			console.log( "Switching to current limiting mode")
 		}
 
 		const maxPowerIn = 230 * this.max_wall_current // Watts, 10 amps in regular outlet
 		const maxPowerOut = maxPowerIn * BoatModel.ChargerState.efficiency;
-		const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/ targetPackVoltage;
+		const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/ this.target_pack_voltage;
+
+		console.log( "max_wall_current=" + this.max_wall_current + 
+			", maxPowerIn=" + maxPowerIn + 
+			", maxPowerOut=" + maxPowerOut + 
+			", temperature_derating=" + this.temperature_derating +
+			", maxChargingCurrent=" + maxChargingCurrent )
 
 		if( !this.current_limiting )
 		{
+			console.log( "Not current limiting. charging current=" + this.charging_current + ", maxChargingCurrent=" + maxChargingCurrent )
+
 			if( this.charging_current < maxChargingCurrent )
 			{
 				if( voltageDiff < 0.01 )
 					this.charging_current += 0.1
 				else
+				{
 					this.charging_current += 1
+					console.log( "charging current increased by 1 A to " + this.charging_current )
+				}
 
 				if( this.charging_current > maxChargingCurrent )
 				{
@@ -426,15 +556,28 @@ class ChargeState extends MJoulnirState
 
 				if( this.charging_current == maxChargingCurrent )
 				{
-					console.log( "At max charging current" );
-					this.at_max_current = true;
+					// todo: replicated code, move into function
+					// record voltages
+					this.max_current_voltages = clone( this.battery.voltages )
+					// pause charging
+					// measure idle voltages at resume
+					// calculate resistance from above voltages
+					if( !this.resistances_estimated )
+						this.pauseCharging()
+					// this.pauseTimer = setTimeout( this.pauseCharging.bind(this), ChargeState.CHARGE_PERIOD_DURATION * 1000 )				
+					this.at_max_current = true; // now if not earlier
+					this.at_max_current_time = Date.now() / 1000.0
+
+					// console.log( "At max charging current" );
+					// this.at_max_current = true;
+					return;
 				}
 			}
 		}
 
 		if( this.current_limiting )
 		{
-			if( this.charging_current <= this.MIN_CHARGING_CURRENT )
+			if( this.charging_current <= ChargeState.MIN_CHARGING_CURRENT )
 			{
 				if( voltageDiff <= 0 )
 				{
@@ -449,7 +592,7 @@ class ChargeState extends MJoulnirState
 			else 
               if( this.charging_current >= 3 )
               {
-				if( voltageDiff <= 0.002 )
+				if( voltageDiff <= 0.003 )
 				{
 					if( voltageDiff <= 0 )
 						this.charging_current -= 1
@@ -477,9 +620,10 @@ class ChargeState extends MJoulnirState
 
 		console.log( "max cell voltage=" + maxCellVoltage.toFixed(3) + 
 			", diff to target=" + voltageDiff.toFixed(4) + 
-			", pack voltage=" + this.batteryState.getTotalVoltage()?.toFixed(1) + 
-			" target voltage = " + targetPackVoltage.toFixed(1) + 
-			" charging current=" + maxChargingCurrent.toFixed(1) +
+			", pack voltage=" + this.battery.getTotalVoltage()?.toFixed(1) + 
+			" target voltage = " + this.target_pack_voltage.toFixed(1) + 
+			" charging current = " + this.charging_current + 
+			" max charging current=" + maxChargingCurrent.toFixed(1) +
 			" at max current: " + this.at_max_current +
 			" current_limiting: " + this.current_limiting );
 
@@ -488,48 +632,7 @@ class ChargeState extends MJoulnirState
 		// record cell voltages before charging, so that we can estimate the 
 		// internal resistance of the cell groups
 		// the ... thing clonse the array
-		this.charger!.setChargingParameters( targetPackVoltage, this.charging_current, true );
-	}
-
-	estimateResistances(): void
-	{
-		assert( this.model.charger!.do_charge! );
-
-		const resistances: number[][] = []
-		
-		let text = "Resistances (mΩ): ";
-		/// one module is 444 cells, divided into 6 groups in series -> 74 cells in parallell
-		// current is divided among these 
-		const current = this.model.charger!.output_current! / 74;
-
-		for( let module_index = 0; 
-             module_index < this.idle_cell_voltages!.length;
-             module_index++ )
-		{
-			resistances[ module_index ] = []
-			text += " Module " + module_index + ": [";
-
-			for( let cell_index = 0; 
-                 cell_index < this.idle_cell_voltages![module_index].length;
-                 cell_index++ )
-			{
-				const dV = this.model.batteryState.voltages[ module_index ][ cell_index ]
-					- this.idle_cell_voltages![ module_index ][ cell_index ];
-				// console.log( "dV[ " + module_index + " ][ " + cell_index + "]=" + dV);
-				const resistance = dV / current;
-				resistances[ module_index ][ cell_index ] = resistance;
-				if( cell_index != 0 )
-					text += ", "
-				text += (resistance * 1000).toFixed(0);
-			}
-			text += " ]\n";
-		}
-
-		// this.model.batteryState.setResistances( resistances );
-		console.log( text );
-
-		this.model.batteryState.resistances = resistances;
-		this.model.batteryState.signalUpdated();
+		this.charger!.setChargingParameters( this.target_pack_voltage, this.charging_current, true );
 	}
 
 	chargerChanged(): void
@@ -538,6 +641,9 @@ class ChargeState extends MJoulnirState
 
 		console.log( "Charge State: Charger changed, currently: " + charger.toString() )
 		// assert( charger.canCharge() );
+
+		if( charger.do_charge! )
+			this.latest_charging_current = charger.output_current!
 
 		if( !charger.canCharge() || charger!.output_voltage! > 75.6 || charger!.output_current! > 40 )
 		{
@@ -558,7 +664,7 @@ class ChargeState extends MJoulnirState
 	{
 		console.log( "Charging done, transitioning...");
 
-		if( this.batteryState.isBalanced() )
+		if( this.battery.isBalanced() )
 			this.exit( this.stateMachine.armedState );
 		else
 			this.exit( this.stateMachine.balancingState );
@@ -566,19 +672,23 @@ class ChargeState extends MJoulnirState
 
 	batteryChanged(): void
 	{
-		const batteryState = this.stateMachine.model.batteryState
-		const newTemperature = batteryState.getMaxTemperature()!
+		const newTemperature = this.battery.getMaxTemperature()!
+		const now = Date.now() / 1000
 
-		if( this.at_max_current )
-			this.battery_updates_after_maxCurrent++;
+		if( newTemperature >= 35 )
+		{
+			console.log( "Aborting charging due to battery over temperature 35 C");
+			this.abort();
+			return;
+		}
 
-		console.log( "Charge State: Battery changed, currently: " + batteryState.toString() )
+		console.log( "Charge State: Battery changed, currently: " + this.battery.toString() )
 
 		// if the battery is not balanced, we need a re-charge after balancing anyway,
 		// so we go to balancing when charge current has gone down to 5A 
-		if( batteryState.getMaxCellVoltage()! >= (this.target_max_cell_voltage! - 0.002) && 
-			((batteryState.isBalanced() && this.charging_current <= 0.5) ||
-			 (!batteryState.isBalanced() && this.charging_current < 5)))
+		if( this.battery.getMaxCellVoltage()! >= (this.target_max_cell_voltage! - 0.002) && 
+			((this.battery.isBalanced() && this.charging_current <= 0.5) ||
+			 (!this.battery.isBalanced() && this.charging_current < 5)))
 		{
 			this.done();
 			// charging is done
@@ -595,13 +705,8 @@ class ChargeState extends MJoulnirState
 				*/
 		}
 
-		// TODO: stop charging if over temperature or over voltage
-		if( newTemperature >= 35 )
-		{
-			console.log( "Aborting charging due to battery over temperature 35 C");
-			this.abort();
+		if( this.is_paused )
 			return;
-		}
 
 		if( this.prev_temperature === undefined )
 			this.prev_temperature = newTemperature;
@@ -629,9 +734,6 @@ class ChargeState extends MJoulnirState
 		if( this.temperature_derating > 0.01 )
 			console.log( "temperature derating: " + (this.temperature_derating * 100).toFixed(0) + "%")
 
-		if( this.battery_updates_after_maxCurrent == 5 )
-			this.estimateResistances();
-
 		this.recalculateCharging();
 	}
 
@@ -639,11 +741,12 @@ class ChargeState extends MJoulnirState
 
 class BalancingState extends MJoulnirState
 {
-	static readonly BALANCING_PASS_DURATION = 2 * 60
+	// 
+	static readonly BALANCING_PASS_DURATION = 90
 
-	readonly batteryState: BoatModel.BatteryState;
+	readonly battery: BoatModel.Battery;
 	readonly model: BoatModel.BoatModel;
-	readonly batteryReader: BatteryReader.BatteryReader;
+	// readonly batteryReader: BatteryReader.BatteryReader;
 
 	readonly boundBatteryListener: () => void;
 	readonly boundChargerListener: () => void;
@@ -651,25 +754,32 @@ class BalancingState extends MJoulnirState
 
 	charger?: Charger.Charger
 
-	initialWaitTimeout?: NodeJS.Timer;
+	// initialWaitTimeout?: NodeJS.Timer;
 	is_balancing = false;
 	cellsToBalance: boolean[][] = [];
 	initialVoltages: number[][] = [];
 	targetVoltage = 0;
 	balanceTimer?: NodeJS.Timer;
 	settleTimer?: NodeJS.Timer;
+	// settlingCount = 0
 
 	constructor(machine: ElectricDrivetrainStateMachine)
 	{
 		super( BoatModel.State.Balancing, machine, "Balancing");
 
 		this.model = machine.model;
-		this.batteryState = machine.model.batteryState;
-		this.batteryReader = machine.batteryReader;
+		this.battery = machine.model.battery;
 
 		this.boundBatteryListener = this.batteryChanged.bind( this );
 		this.boundChargerListener = this.chargerChanged.bind( this );
 		// this.boundStartBalancing = this.startBalancing.bind( this );
+	}
+
+	canEnter(): boolean
+	{
+		// maybe deny if battery charge is too low
+		// also TODO: stop balancing if any cell voltage is too low
+		return true
 	}
 
 	enter( ): void 
@@ -678,7 +788,7 @@ class BalancingState extends MJoulnirState
 
 		this.charger = this.stateMachine.charger
 
-		this.batteryState.onChanged( this.boundBatteryListener );
+		this.battery.onChanged( this.boundBatteryListener );
 		this.model.charger.onChanged( this.boundChargerListener );
 
 		// we don't need a high update interval, we poll the battery when required
@@ -687,25 +797,14 @@ class BalancingState extends MJoulnirState
 		// TODO: monitor power switch
 		// TODO: disable VESC? monitor VESC for going to active state
 
+		this.stateMachine.vesc!.setPollMCValueInterval( 2 );
+
 		// first, wait one minute to let all cell voltages settle
 		this.is_balancing = false;
 		console.log( "Waiting one minute...");
 		// temporarily changed to 10 seconds for testing
-		this.initialWaitTimeout = setTimeout( this.startBalancing.bind(this), /* 60 */ 10 * 1000 );
-	}
-
-	async startBalancing(): Promise<void>
-	{
-		return this.batteryReader.poll(true)
-			.then( () => {
-				this.printImbalance()
-				this.initialWaitTimeout = undefined;
-
-				this.initialVoltages = this.batteryState.voltages;
-				this.targetVoltage = this.batteryState.getMinCellVoltage()!;
-				console.log( "Target voltage=" + this.targetVoltage.toFixed(3) + " V" );
-				return this.startBalancingPass();
-			})
+		// this.initialWaitTimeout = setTimeout( this.startBalancing.bind(this), /* 60 */ 10 * 1000 );
+		this.finishBalancePass()
 	}
 
 	async startBalancingPass(): Promise<void>
@@ -714,8 +813,9 @@ class BalancingState extends MJoulnirState
 
 		// Turn on balancing for all cells more than 5 mV above the lowest
 		// cell
-		this.batteryReader.setBalanceTimer( BalancingState.BALANCING_PASS_DURATION )
-			.then( () => this.batteryReader.balance( this.cellsToBalance ) )
+		this.battery.balance_cells( BalancingState.BALANCING_PASS_DURATION, this.cellsToBalance )
+		// this.batteryReader.setBalanceTimer( BalancingState.BALANCING_PASS_DURATION )
+		//	.then( () => this.batteryReader.balance( this.cellsToBalance ) )
 			.then( () => { this.is_balancing = true;
 				console.log( "Setting balanceTimer")
 				this.balanceTimer = setTimeout( this.finishBalancePass.bind( this ),
@@ -733,12 +833,14 @@ class BalancingState extends MJoulnirState
 	calculateCellsToBalance(): boolean[][]
 	{
 		// Read all cell voltages
-		const voltages = this.batteryState.voltages;
+		const voltages = this.battery.voltages;
 		// const maxVoltage = this.batteryState.getMaxCellVoltage();
 		const cellsToBalance: boolean[][] = [];
-		const minVoltage = this.batteryState.getMinCellVoltage()!
+		const minVoltage = this.battery.getMinCellVoltage()!
+		let counter = 0
 
-		if( Math.round(minVoltage * 1000) != Math.round(this.targetVoltage * 1000))
+		// if( Math.round(minVoltage * 1000) != Math.round(this.targetVoltage * 1000))
+		if( minVoltage != this.targetVoltage)
 		{
 			console.log( "Changing target voltage from " + this.targetVoltage.toFixed(3) + 
 				" to " + minVoltage.toFixed(3))
@@ -756,8 +858,11 @@ class BalancingState extends MJoulnirState
 			{
 				let doBalance: boolean
 
-				if( voltages[ moduleIndex ][ cellGroupIndex ] > (this.targetVoltage + BoatModel.BatteryState.BALANCE_MAX_DIFF_VOLTS) )
+				if( voltages[ moduleIndex ][ cellGroupIndex ] > (this.targetVoltage + BoatModel.Battery.BALANCE_THRESHOLD_V) )
+				{
 					doBalance = true;
+					counter++;
+				}
 				else
 					doBalance = false;
 
@@ -767,11 +872,15 @@ class BalancingState extends MJoulnirState
 
 				const v = voltages[ moduleIndex ][ cellGroupIndex ]
 				// console.log( "voltages[][]=" + v );
-				line += v.toFixed(3) + " V " + (doBalance ? "*" : "");
+				line += v.toFixed(4) + (doBalance ? "*" : " ") + "V";
 			}
 			line += " ]";
-			// console.log( line );
+			console.log( line );
 		}
+
+		console.log( "Balance count: " + counter )
+		// this.printCellVoltages();
+		this.printImbalance();
 
 		return cellsToBalance;
 	}
@@ -782,11 +891,15 @@ class BalancingState extends MJoulnirState
 		this.balanceTimer = undefined
 
 		// turn off balancing
-		this.batteryReader.stopBalancing()
+		this.battery.stopBalancing()
+		/*
 			.then( () => {
 				console.log( "Waiting 20s for cells to settle")
-				this.settleTimer = setTimeout( this.evaluateBalancing.bind(this), 20000 )
+				// this.settleTimer = setTimeout( this.observeSettling.bind(this), 1000 )
+				this.observeSettling(10) 
 			})
+		*/
+			.then( () => this.evaluateBalancing() )
 			.catch( error => {
 				console.log( "failed top stop balancing: " + error );
 				console.log( error.stack );
@@ -794,9 +907,9 @@ class BalancingState extends MJoulnirState
 			})
 	}
 
+	
 	evaluateBalancing()
 	{
-		// const newCellsToBalance = this.calculateCellsToBalance();
 		var line = "";
 		var count = 0;
 
@@ -804,93 +917,42 @@ class BalancingState extends MJoulnirState
 
 		console.log( "Eval: polling battery")
 
-		this.batteryReader.poll(true)
+		this.battery.poll(true)
 			.then( () => {
-				this.printCellVoltages();
-				this.printImbalance();
-
-				const count = this.batteryState.voltages.reduce( (acc, cellVoltages) => cellVoltages.reduce( (acc, v) => {
-					if( v > this.targetVoltage + BoatModel.BatteryState.BALANCE_MAX_DIFF_VOLTS)
-						return acc + 1;
-					else
-						return acc;
-				}, acc), 0)
-				// print cell volages
-				/*
-				for( let moduleIndex = 0; moduleIndex < this.batteryState.voltages.length; 
-					moduleIndex++)
-				{
-					// const cells = newCellsToBalance[ moduleIndex ];
-					const voltages = this.batteryState.voltages[ moduleIndex ];
-
-					line = "[ ";
-					for( let cellIndex = 0; cellIndex < voltages.length; cellIndex++ )
-					{
-						const v = voltages[ cellIndex ];
-						if( cellIndex != 0 )
-							line += ", ";
-						line += v.toFixed(3);
-						
-						if( v > this.targetVoltage )
-						{
-							line += "*";
-							count++;
-						}
-					}
-					console.log( line );
-				}
-				*/
-				console.log( "count=" + count)
-				if( count > 0 )
-					this.startBalancingPass();
+				if( this.battery.isBalanced() )
+					this.done()
 				else
-					this.done();
+				{
+					const count = this.battery.voltages.reduce( (acc, cellVoltages) => cellVoltages.reduce( (acc, v) => {
+						if( v > this.targetVoltage + BoatModel.Battery.BALANCE_MAX_DIFF_VOLTS)
+						{
+							console.log( "Balancing " + v.toFixed(5) + " V" );
+							return acc + 1;
+						}
+						else
+							return acc;
+					}, acc), 0)
+
+					console.log( "count=" + count)
+					if( count > 0 )
+						this.startBalancingPass();
+					else
+						this.done();
+				}
 			})
+			.catch( (reason) => { console.log( "BalancingSate.evaluateBalancing: exception: " + reason ) } )
 	}
 
 	batteryChanged(): void
 	{
-		// if( !this.is_balancing )
-		//	return;
-
-		// algorithm must be: enable balancing, wait, turn off balancing,
-		// wait? measure, repeat. 
-		// No! Why?
-/*
-		const newCellsToBalance = this.calculateCellsToBalance();
-
-		if( newCellsToBalance != this.cellsToBalance )
-		{
-			this.cellsToBalance = newCellsToBalance;
-
-			const count_cells = this.cellsToBalance.reduce( (acc, moduleCells) => 
-				moduleCells.reduce( (acc, doBalance) => { 
-					if( doBalance ) 
-						return acc + 1 
-					else
-						return acc
-				}, acc), 0);
-
-			console.log( count_cells + " cells remain to be balanced: " );
-			*/
-/*
-			if( count_cells == 0 )
-				this.done()
-			else
-				this.batteryReader.
-*/
-		// }
-
-		// console.log( "Cell voltages: ")
-		// this.printCellVoltages();
 		console.log( "Battery temperatures: " + 
-			this.batteryState.getMinTemperature()!.toFixed(1) + " - "  + 
-			this.batteryState.getMaxTemperature()!.toFixed(1) )
+			this.battery.getMinTemperature()!.toFixed(1) + " - "  + 
+			this.battery.getMaxTemperature()!.toFixed(1) )
 		
 		// play it safe. 25 C may mean it is warmer somewhere inside the battery. 
 		// Although it's probably the balancing resistors' dissipation that leaks
 		// into the battery module
-		if( this.batteryState.getMaxTemperature()! > 25 )
+		if( this.battery.getMaxTemperature()! > 25 )
 		{
 			console.log( "Pausing balancing because battery temperature is over 25 C");
 			this.exit( this.stateMachine.armedState );
@@ -899,13 +961,13 @@ class BalancingState extends MJoulnirState
 
 	printImbalance()
 	{
-		console.log( "Imbalance: " + this.batteryState.imbalance_V!.toFixed(4) + " V, " + 
-					 (this.batteryState.imbalance_soc! * 100).toFixed(1) + "% soc")
+		console.log( "Imbalance: " + this.battery.imbalance_V!.toFixed(5) + " V, " + 
+					 (this.battery.imbalance_soc! * 100).toFixed(2) + "% soc")
 	}
 
 	printCellVoltages()
 	{
-		const allVoltages = this.batteryState.voltages;
+		const allVoltages = this.battery.voltages;
 		let line = "";
 
 		for( let moduleIndex = 0; moduleIndex < allVoltages.length; moduleIndex++)
@@ -917,8 +979,8 @@ class BalancingState extends MJoulnirState
 			{
 				if( cellIndex != 0 )
 					line += ", ";
-				line += voltages[ cellIndex ].toFixed(3);
-				if( voltages[cellIndex] > (this.targetVoltage + BoatModel.BatteryState.BALANCE_MAX_DIFF_VOLTS))
+				line += voltages[ cellIndex ].toFixed(4);
+				if( voltages[cellIndex] > (this.targetVoltage + BoatModel.Battery.BALANCE_MAX_DIFF_VOLTS))
 					line += "*"
 			}
 			line += " ]";
@@ -928,7 +990,8 @@ class BalancingState extends MJoulnirState
 
 	done(): void
 	{
-		this.stateMachine.chargeState.target_soc = 0.8;
+		// this.stateMachine.chargeState.target_soc = 0.8;
+		this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
 		this.exit( this.stateMachine.chargeState );
 	}
 
@@ -940,28 +1003,18 @@ class BalancingState extends MJoulnirState
 	exit( nextState: MJoulnirState ): void
 	{
 		// TODO: turn off all balancing
-
-		if( !(this.initialWaitTimeout === undefined) )
-		{
-			clearTimeout( this.initialWaitTimeout )
-			this.initialWaitTimeout = undefined;
-		}
-		
+	
 		if( !(this.balanceTimer === undefined) )
 		{
 			clearTimeout( this.balanceTimer )
 			this.balanceTimer = undefined;
 		}
 
-		if( !(this.settleTimer === undefined) )
-		{
-			clearTimeout( this.settleTimer )
-			this.settleTimer = undefined;
-		}
-
 		this.stateMachine.model.charger.unOnChanged( this.boundChargerListener );
 		if( this.is_balancing )
-			this.stateMachine.model.batteryState.unOnChanged( this.boundBatteryListener )
+			this.stateMachine.model.battery.unOnChanged( this.boundBatteryListener )
+
+		this.stateMachine.vesc!.setPollMCValueInterval( 0 );
 
 		this.is_balancing = false;
 		this.stateMachine.transitionTo( nextState );
@@ -984,10 +1037,11 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 
 	vesc?: VESC.VESCtalker;
 	charger?: Charger.Charger;
-	readonly batteryReader: BatteryReader.BatteryReader;
+	// readonly batteryReader: BatteryReader.BatteryReader;
 
 	readonly model: BoatModel.BoatModel;
-	readonly batteryState: BoatModel.BatteryState
+	readonly battery: BoatModel.Battery
+
 	readonly bootState = new BootState(this);
 	readonly batteryErrorState = new BatteryErrorState(this);
 	readonly turnOnContactorState = new TurnOnContactorState(this);	
@@ -995,17 +1049,15 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 	readonly chargeState
 	readonly balancingState
 
-	constructor( model: BoatModel.BoatModel, batteryReaderSerialPortName: string )
+	constructor( model: BoatModel.BoatModel )
 	{
 		super();
 		this.model = model;
 
-		this.batteryState = model.batteryState;
+		this.battery = model.battery;
 		// these must be created after the state machine's model is assigned
 		this.armedState = new ArmedState(this);
 		this.chargeState = new ChargeState(this);
-
-		this.batteryReader = new BatteryReader.BatteryReader( batteryReaderSerialPortName, BoatModel.boatModel);
 
 		// balancingState must be created after the batteryReader
 		this.balancingState = new BalancingState(this);
@@ -1015,11 +1067,10 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 
 	start( ): void
 	{
-		this.batteryReader.start(60)
-			.then( () => this.batteryReader.poll(true) )
+		this.battery.poll(true)
 			.then( () => {
-				console.log( "Imbalance: " + this.model.batteryState.imbalance_V!.toFixed(3) + " V, " +
-					(this.batteryState.imbalance_soc! * 100).toFixed(1) + "% soc" )
+				console.log( "Imbalance: " + this.model.battery.imbalance_V!.toFixed(3) + " V, " +
+					(this.battery.imbalance_soc! * 100).toFixed(1) + "% soc" )
 			})
 			.catch( (error) => {
 				console.log( "Failed to start battery reader: " + error );
@@ -1027,6 +1078,37 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 			})
 
 		this.state.enter();
+	}
+
+	requestTransition( modelState: BoatModel.State ): boolean
+	{
+		var state: MJoulnirState
+
+		switch( modelState )
+		{
+			case BoatModel.State.Armed:
+				state = this.armedState
+				break;
+
+			case BoatModel.State.Charging:
+				state = this.chargeState
+				break;
+
+			case BoatModel.State.Balancing:
+				state = this.balancingState
+				break;
+
+			case BoatModel.State.Active:
+			case BoatModel.State.Booting:
+			case BoatModel.State.Error:
+			case BoatModel.State.Idle: // need to introduce idle state
+				return false;
+		}
+
+		if( !state.canEnter() )
+			return false;
+
+		return this.state.requestTransition( state )
 	}
 
 	transitionTo( state: MJoulnirState ): void

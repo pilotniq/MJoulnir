@@ -7,14 +7,14 @@ export class BMSPack {
 }
 */
 declare module 'tesla-slave-bms' {
-	export declare class BMSBoard {
+	export class BMSBoard {
 		id: number;
 		cellVoltages: number[];
 		temperatures: number[];
 	}
 
 	// export = BMSPack;
-	export declare class BMSPack {
+	export class BMSPack {
 		modules: { [num: number]: BMSBoard };
 		constructor( serialDevice: string );
 		init(): Promise<void>;

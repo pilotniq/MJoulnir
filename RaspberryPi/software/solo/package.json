@@ -27,7 +27,7 @@
   },
   "main": "dist/app.js",
   "scripts": {
-    "start": "tsc && NOBLE_HCI_DEVICE_ID=1 BLENO_HCI_DEVICE_ID=0 node dist/app.js",
+    "start": "tsc && NOBLE_HCI_DEVICE_ID=0 BLENO_HCI_DEVICE_ID=1 node --inspect dist/app.js",
     "vescTest": "tsc && node dist/vescTest.js",
     "lint": "eslint . --ext .ts",
     "test": "tsc && ava"

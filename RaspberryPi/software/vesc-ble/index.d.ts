@@ -34,10 +34,11 @@ export declare class Packet_Values extends Packet
     fault: number;
     pid_pos_now: number;
     controller_id: number;
-    temperature_mos1: number;
-    temperature_mos2: number;
-    temperature_mos3: number;
+    temp_mos_1: number;
+    temp_mos_2: number;
+    temp_mos_3: number;
     vq: number;
+    vd: number;
 }
 
 export declare class Packet_CAN extends Packet

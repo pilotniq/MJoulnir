@@ -1,23 +1,20 @@
 import * as Model from "./model"
 import * as BoatModel from "./boatModel"
 import * as Bleno from '@abandonware/bleno'
-// import PrimaryService from '@abandonware/bleno'
-// import Characteristic from '@abandonware/bleno'
+import { ElectricDrivetrainStateMachine } from "./stateMachine"
 
-// var util = require('util');
-// var bleno = require('@abandonware/bleno');
+const UUID_DESCRIPTOR_CCCD = '2904'
+const UUID_DESCRIPTOR_CHARACTERISTIC_USER_DESCRIPTION = '2901'
 
-let UUID_DESCRIPTOR_CCCD = '2904'
-let UUID_DESCRIPTOR_CHARACTERISTIC_USER_DESCRIPTION = '2901'
-
-let UUID_SERVICE_ELECTRIC_DRIVETRAIN = '71498776a04c4800a1d925ebc70b0000';
-let UUID_CHARACTERISTIC_BATTERY_VOLTAGES = '71498776a04c4800a1d925ebc70b0001';
-let UUID_CHARACTERISTIC_STATE = '71498776a04c4800a1d925ebc70b0002';
-let UUID_CHARACTERISTIC_BATTERY_IMBALANCE = '71498776a04c4800a1d925ebc70b0003';
+const UUID_SERVICE_ELECTRIC_DRIVETRAIN = '71498776a04c4800a1d925ebc70b0000';
+const UUID_CHARACTERISTIC_BATTERY_VOLTAGES = '71498776a04c4800a1d925ebc70b0001';
+const UUID_CHARACTERISTIC_STATE = '71498776a04c4800a1d925ebc70b0002';
+const UUID_CHARACTERISTIC_BATTERY_IMBALANCE = '71498776a04c4800a1d925ebc70b0003';
+const UUID_CHARACTERISTIC_TEMPERATURES = '71498776a04c4800a1d925ebc70b0004';
+const UUID_CHARACTERISTIC_POWER = '71498776a04c4800a1d925ebc70b0005';
 
 let blenoOn = false;
 let started = false;
-let model: BoatModel.BoatModel | undefined;
 
 /*
   The battery voltages consists of an array of voltages.
@@ -34,9 +31,6 @@ let model: BoatModel.BoatModel | undefined;
   index 
 */
 
-// console.log( "Bleno: " + typeof Bleno );
-// console.log( "Bleno keys: " + Object.keys( Bleno ) );
-// console.log( "PS type: " + typeof Bleno.Bleno.Characteristic );
 
 abstract class BoatModelCharacteristic extends Bleno.Characteristic
 {
@@ -48,11 +42,11 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 	maxValueSize: number | undefined = undefined;
 
 	constructor( model: BoatModel.BoatModel, attribute: Model.ModelAttribute, 
-		characteristicUUID: string, name: string )
+		characteristicUUID: string, name: string, writable=false )
 	{
 		super({
 			uuid: characteristicUUID,
-			properties: ['read', 'notify'],
+			properties: writable ? ['read', 'write', 'notify'] : ['read', 'notify'],
 				descriptors: [
 				  new Bleno.Descriptor({
 					uuid: UUID_DESCRIPTOR_CHARACTERISTIC_USER_DESCRIPTION,
@@ -82,6 +76,7 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 
 	onReadRequest(offset: number, callback: (error_code: number, data?: Buffer | undefined) => void )
 	{
+		console.log( "BoatModelCharacteristic.onReadRequest")
 		callback(Bleno.Characteristic.RESULT_SUCCESS, this.value);
 	}
 
@@ -89,21 +84,32 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 	abstract buildValue(): void
 
 	updateValue() {
+		// console.log( "BoatModelCharacteristic.updateValue entry")
 		const oldValue = Buffer.from( this.value )
 
 		this.buildValue();
 
 		if( !oldValue.equals( this.value ) && this.updateValueCallback )
 		{
-			console.log( "Calling updateValueCallback" );
+			// console.log( "Calling updateValueCallback" );
 			this.updateValueCallback( this.value );
 		}
+		// console.log( "BoatModelCharacteristic.updateValue exit")
 	}
+}
+
+abstract class WritableBoatModelCharacteristic extends BoatModelCharacteristic
+{
+	constructor( model: BoatModel.BoatModel, attribute: Model.ModelAttribute, 
+		characteristicUUID: string, name: string )
+		{
+			super( model, attribute, characteristicUUID, name, true )
+		}
 }
 class BatteryVoltagesCharacteristic extends BoatModelCharacteristic
 {
 	constructor(model: BoatModel.BoatModel) {
-	  super( model, model.batteryState, UUID_CHARACTERISTIC_BATTERY_VOLTAGES, "Battery voltages" );
+	  super( model, model.battery, UUID_CHARACTERISTIC_BATTERY_VOLTAGES, "Battery voltages" );
 
 	  this.buildValue();
 	}
@@ -113,7 +119,7 @@ class BatteryVoltagesCharacteristic extends BoatModelCharacteristic
 	  18 bytes for cell voltages. Each byte is round((voltage - 2) * 100)
 	*/
 	buildValue() {
-	  let batteryState = this.model.batteryState;
+	  let batteryState = this.model.battery;
 	  let voltages = batteryState.voltages;
 	  let moduleCount = voltages.length;
 
@@ -150,16 +156,104 @@ class BatteryVoltagesCharacteristic extends BoatModelCharacteristic
 	}
 }
 
-class StateCharacteristic extends BoatModelCharacteristic
+class TemperaturesCharacteristic extends BoatModelCharacteristic
 {
-	// value!: Buffer;
-	// updateValueCallback: ((data: Buffer) => void) | undefined = undefined;
+	readonly vescState
+	readonly batteryState
 
 	constructor(model: BoatModel.BoatModel) {
+	  super( model, model.battery, UUID_CHARACTERISTIC_TEMPERATURES, "Temperatures" );
+
+	  this.vescState = model.vescState
+	  this.batteryState = model.battery
+
+	  // base class will subscribe to model.batteryState
+	  model.vescState.onChanged( this.updateValue.bind(this) )
+
+	  this.buildValue();
+	}
+
+	/* The value consists of:
+		Each temperature is one byte, signed integer
+		0x80 means invalid
+
+		Temperatures are:
+		VESC: temp_mos;
+	          temp_mos_1;
+	 	      temp_mos_2;
+		      temp_mos_3;
+		      temp_motor;
+		Batteries: 6 temperatures (2 for each module)
+		Raspberry Pi
+
+		Total: 12 bytes
+	*/
+	buildValue() {
+		this.value = Buffer.alloc(12);
+
+		if( this.vescState.isValid )
+		{
+			this.value[0] = Math.round(this.vescState.temp_mos)
+			this.value[1] = Math.round(this.vescState.temp_mos_1)
+			this.value[2] = Math.round(this.vescState.temp_mos_2)
+			this.value[3] = Math.round(this.vescState.temp_mos_3)
+			this.value[4] = Math.round(this.vescState.temp_motor)
+		}
+		else
+		{
+			console.log( "TemperaturesCharacteristic.buildValue: vescState is invalid");
+			
+			this.value[0] = 0x80;
+			this.value[1] = 0x80;
+			this.value[2] = 0x80;
+			this.value[3] = 0x80;
+			this.value[4] = 0x80;
+		}
+
+		if( this.batteryState.isValid )
+		{
+			for( let i = 0; i < 3; i++ )
+				for( let j = 0; j < 2; j++ )
+				{
+					const valueIndex = 5 + i * 2 + j
+					this.value[valueIndex] = Math.round(this.batteryState.temperatures[i][j])
+				}
+		}
+		else
+			console.log( "TemperaturesCharacteristic.buildValue: batteryState invalid" );
+
+		this.value[11] = 0x80; // raspberry pi not implmented yet
+	}
+}
+
+class StateCharacteristic extends WritableBoatModelCharacteristic
+{
+	readonly stateMachine: ElectricDrivetrainStateMachine
+
+	constructor(model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine) {
 		super( model, model.state, UUID_CHARACTERISTIC_STATE, "State" );
 
+		this.stateMachine = stateMachine
 		this.value = Buffer.alloc(2);
 		this.model.state.onChanged( this.updateValue.bind(this) );
+	}
+
+	onWriteRequest(data: Buffer, offset: number, without_response: boolean, 
+		callback: (error_code: number) => void )
+	{
+		const newStateRaw = data[0]
+
+		console.log( "BoatModelCharacteristic.onWriteRequest")
+
+		if( newStateRaw > BoatModel.State.Active )
+			callback( Bleno.Characteristic.RESULT_UNLIKELY_ERROR)
+		else
+		{
+			const newState :BoatModel.State =newStateRaw!
+			
+			this.stateMachine.requestTransition( newState as BoatModel.State )
+			callback(Bleno.Characteristic.RESULT_SUCCESS);
+		}
 	}
 
 	buildValue()
@@ -170,7 +264,7 @@ class StateCharacteristic extends BoatModelCharacteristic
 
 class BatteryBalanceCharacteristic extends BoatModelCharacteristic
 {
-	readonly batteryState: BoatModel.BatteryState
+	readonly batteryState: BoatModel.Battery
 
 	// value is 4 bytes:
 	// First two is imbalance in mV
@@ -179,7 +273,7 @@ class BatteryBalanceCharacteristic extends BoatModelCharacteristic
 		super( model, model.state, UUID_CHARACTERISTIC_BATTERY_IMBALANCE, "Battery Imbalance" );
 
 		this.value = Buffer.alloc(4);
-		this.batteryState = this.model.batteryState
+		this.batteryState = this.model.battery
 		this.batteryState.onChanged( this.updateValue.bind(this) );
 	}
 
@@ -194,33 +288,51 @@ class BatteryBalanceCharacteristic extends BoatModelCharacteristic
 		this.value[3] = (percentx10 >> 8) & 0xff
 	}
 }
-// util.inherits(BatteryVoltagesCharacteristic, bleno.Characteristic);
 
+class PowerCharacteristic extends BoatModelCharacteristic
+{
+	readonly batteryState: BoatModel.Battery
 
-// var BatteryVoltageCharacteristic = require('./battery-level-characteristic');
+	// value is 4 bytes:
+	// First two is signed battery power flow in W (range +-32kW). 
+	// Negative when power is consumed, positive when charging
+	// next is two bytes is battery current (signed, current * 100)
+	// next byte is ESC duty cycle
+	constructor(model: BoatModel.BoatModel) {
+		super( model, model.state, UUID_CHARACTERISTIC_BATTERY_IMBALANCE, "Battery Imbalance" );
 
-// console.log( "Bleno: " + typeof Bleno );
-// console.log( "Bleno keys: " + Object.keys( Bleno ) );
-// console.log( "PS type: " + typeof Bleno.PrimaryService );
+		this.value = Buffer.alloc(4);
+		this.batteryState = this.model.battery
+		this.batteryState.onChanged( this.updateValue.bind(this) );
+	}
+
+	buildValue()
+	{
+		let mv = Math.round(this.batteryState.imbalance_V! * 1000)
+		let percentx10 = Math.round(this.batteryState.imbalance_soc! * 100 * 100)
+
+		this.value[0] = mv & 0xff
+		this.value[1] = (mv >> 8 & 0xff)
+		this.value[2] = percentx10 & 0xff;
+		this.value[3] = (percentx10 >> 8) & 0xff
+	}
+}
 
 class ElectricDrivetrainService extends Bleno.PrimaryService {
-	constructor( model: BoatModel.BoatModel)
+	constructor( model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine)
 	{
 	  super( {
 	      uuid: UUID_SERVICE_ELECTRIC_DRIVETRAIN,
       	      characteristics: [
               	new BatteryVoltagesCharacteristic(model),
-				new StateCharacteristic(model),
-				new BatteryBalanceCharacteristic(model)
+				new StateCharacteristic(model, stateMachine),
+				new BatteryBalanceCharacteristic(model),
+				new TemperaturesCharacteristic(model)
       	      ]
   	  });
 	}
 }
 
-// util.inherits(ElectricDrivetrainService, bleno.PrimaryService);
-
-// service = new 
-// console.log( "eds.uuid=" + eds );
 //
 // Wait until the BLE radio powers on before attempting to advertise.
 // If you don't have a BLE radio, then it will never power on!
@@ -252,11 +364,9 @@ Bleno.bleno.on('advertisingStart', function(err) {
   }
 });
 
-export function start( _model: BoatModel.BoatModel): void
+export function start( model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine): void
 {
-	model = _model;
-
-    electricDrivetrainService = new ElectricDrivetrainService(model!);
+    electricDrivetrainService = new ElectricDrivetrainService(model, stateMachine);
 
 	if( blenoOn )
 		startAdvertising();
@@ -285,4 +395,3 @@ function startAdvertising()
 	  isAdvertising = true;
     });
 }
-
