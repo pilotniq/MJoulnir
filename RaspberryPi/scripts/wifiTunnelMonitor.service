@@ -1,0 +1,17 @@
+[Unit]
+Description=WiFi Reverse SSH Tunnel
+After=network.target
+Wants=multi-user.target
+Before=multi-user.target
+
+[Service]
+ExecStart=/sbin/wpa_cli -a /home/pi/src/electric-boat/RaspberryPi/scripts/wifiTunnelMonitor.sh
+# WorkingDirectory=/home/pi/src/electric-boat/RaspberryPi/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+
