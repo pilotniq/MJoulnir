@@ -1,5 +1,6 @@
 import rfdc from "rfdc";
 import * as BoatModel from "./boatModel"
+import * as VESCble from 'vesc-ble'
 import * as VESC from './vesc';
 import * as Charger from './charger';
 import { timeStamp } from "node:console";
@@ -189,9 +190,12 @@ class TurnOnContactorState extends MJoulnirState
 		this.promise = sleep( 4 )
 		// turn on contactor
 			.then( () => { 
+					let vesc = this.stateMachine.model.vescState
 					hardware.setContactor( true );
-					this.stateMachine.vesc = new VESC.VESCtalker( this.stateMachine.model );
-					this.stateMachine.charger = new Charger.Charger( this.stateMachine.vesc, this.stateMachine.model );
+					// this.stateMachine.vesc = new VESC.VESCtalker( this.stateMachine.model );
+					vesc.connect()
+					// this.stateMachine.vesc.connect()
+					this.stateMachine.charger = new Charger.Charger( vesc.vescTalker, this.stateMachine.model );
 					// wait 1 second
 					return sleep( 0.5 );
 				})
@@ -213,6 +217,7 @@ class ArmedState extends MJoulnirState
 
 	boundChargerListener: () => void;
 	boundBatteryListener: () => void;
+	boundESCListener: () => void;
 	readonly model: BoatModel.BoatModel;
 
 	constructor(machine: ElectricDrivetrainStateMachine)
@@ -220,8 +225,9 @@ class ArmedState extends MJoulnirState
 		super( BoatModel.State.Armed, machine, "Armed");
 		
 		this.model = machine.model;
-		this.boundChargerListener = this.chargerChanged.bind( this );
 		this.boundBatteryListener = this.batteryChanged.bind( this );
+		this.boundChargerListener = this.chargerChanged.bind( this );
+		this.boundESCListener = this.escChanged.bind( this );
 	}
 
 	canEnter(): boolean
@@ -232,23 +238,28 @@ class ArmedState extends MJoulnirState
 
 	enter(): void 
 	{
+		console.log( "Entering armedState.enter" );
 		super.enter();
 
 		this.model.charger.onChanged( this.boundChargerListener );
 		this.model.battery.onChanged( this.boundBatteryListener );
-		
-		this.stateMachine.vesc!.setPollMCValueInterval( 2 );
+		this.model.vescState.onChanged( this.boundESCListener );
+
+		this.model.vescState.setPollMCValueInterval( 2 );
 
 		// TODO: monitor battery
 		// monitor power switch
 		// monitor VESC for going to active state
+		console.log( "Leaving armedState.enter" );
 	}
 
 	transitionTo(state: MJoulnirState): void
 	{
 		this.model.charger.unOnChanged( this.boundChargerListener );
 		this.model.battery.unOnChanged( this.boundBatteryListener );
-		this.stateMachine.vesc!.setPollMCValueInterval( 0 );
+		this.model.vescState.unOnChanged( this.boundESCListener );
+
+		this.model.vescState.setPollMCValueInterval( 0 );
 
 		this.stateMachine.transitionTo( state )
 	}
@@ -271,6 +282,17 @@ class ArmedState extends MJoulnirState
 			battery.getMaxTemperature()!.toFixed(1) + "°C");
 
 		this.considerAction();
+	}
+
+	escChanged(): void
+	{
+		const esc = this.model.vescState
+
+		if( esc.duty_now != 0 )
+		{
+			console.log( "duty_now=" + esc.duty_now )
+			this.transitionTo( this.stateMachine.activeState );
+		}
 	}
 
 	considerAction(): void
@@ -298,6 +320,112 @@ class ArmedState extends MJoulnirState
 		}
 		else
 			console.log( "Armed state: Charger can't charge")
+	}
+/*
+	requestTransition( nextState: MJoulnirState ): boolean
+	{
+		switch( nextState )
+		{
+			case .
+			default:
+				return false;
+		}
+	}
+*/
+}
+
+class ActiveState extends MJoulnirState
+{
+	static readonly ZERO_DUTY_SECONDS_BEFORE_SWITCH = 10
+
+	readonly battery: BoatModel.Battery;
+	readonly model: BoatModel.BoatModel;
+
+	boundBatteryListener: () => void;
+	boundESCListener: () => void;
+
+	zeroDutyTimer?: NodeJS.Timer
+
+	constructor(machine: ElectricDrivetrainStateMachine)
+	{
+		super( BoatModel.State.Active, machine, "Active");
+
+		this.model = machine.model;
+		this.battery = machine.model.battery;
+
+		this.boundBatteryListener = this.batteryChanged.bind( this );
+		this.boundESCListener = this.escChanged.bind( this );
+		// this.boundStartBalancing = this.startBalancing.bind( this );
+	}
+
+	canEnter(): boolean
+	{		
+		return true;
+	}
+
+	batteryChanged(): void
+	{
+		const battery = this.model.battery
+
+		if( battery.isDangerouslyLow() )
+		{
+			console.log( "Active state: Battery dangerously low, transitioning to Error" );
+			this.transitionTo( this.stateMachine.batteryErrorState );
+		}
+	}
+
+	enter(): void 
+	{
+		console.log( "Entering activeState.enter" );
+		super.enter();
+
+		this.model.battery.onChanged( this.boundBatteryListener );
+		this.model.vescState.onChanged( this.boundESCListener );
+
+		this.battery.setPollingInterval(10);
+		this.model.vescState.setPollMCValueInterval( 2 );
+
+		this.zeroDutyTimer = undefined
+		// TODO: monitor battery
+		// monitor power switch
+	}
+
+	escChanged(): void
+	{
+		if( this.model.vescState.duty_now == 0 )
+		{
+			if(this.zeroDutyTimer === undefined)
+				this.zeroDutyTimer = setTimeout( this.zeroDutyTimeout.bind(this), ActiveState.ZERO_DUTY_SECONDS_BEFORE_SWITCH * 1000 );
+		}
+		else
+		{
+			if(this.zeroDutyTimer !== undefined)
+			{
+				clearTimeout(this.zeroDutyTimer!)
+				this.zeroDutyTimer = undefined
+			}
+		}
+	}
+
+	zeroDutyTimeout(): void
+	{
+		this.transitionTo( this.stateMachine.armedState )
+	}
+
+	transitionTo(state: MJoulnirState): void
+	{
+		this.model.battery.unOnChanged( this.boundBatteryListener );
+		this.model.vescState.unOnChanged( this.boundESCListener );
+
+		this.battery.setPollingInterval(BoatModel.Battery.DEFAULT_POLLING_INTERVAL);
+		this.model.vescState.setPollMCValueInterval( 0 );
+
+		if( this.zeroDutyTimeout !== undefined )
+		{
+			clearTimeout( this.zeroDutyTimer! )
+			this.zeroDutyTimer = undefined
+		}
+		this.stateMachine.transitionTo( state )
 	}
 }
 
@@ -797,7 +925,7 @@ class BalancingState extends MJoulnirState
 		// TODO: monitor power switch
 		// TODO: disable VESC? monitor VESC for going to active state
 
-		this.stateMachine.vesc!.setPollMCValueInterval( 2 );
+		this.model.vescState.setPollMCValueInterval( 2 );
 
 		// first, wait one minute to let all cell voltages settle
 		this.is_balancing = false;
@@ -1014,7 +1142,7 @@ class BalancingState extends MJoulnirState
 		if( this.is_balancing )
 			this.stateMachine.model.battery.unOnChanged( this.boundBatteryListener )
 
-		this.stateMachine.vesc!.setPollMCValueInterval( 0 );
+		this.model.vescState.setPollMCValueInterval( 0 );
 
 		this.is_balancing = false;
 		this.stateMachine.transitionTo( nextState );
@@ -1035,7 +1163,7 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 {
 	state: MJoulnirState;
 
-	vesc?: VESC.VESCtalker;
+	// vesc?: VESC.VESCtalker;
 	charger?: Charger.Charger;
 	// readonly batteryReader: BatteryReader.BatteryReader;
 
@@ -1046,6 +1174,7 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 	readonly batteryErrorState = new BatteryErrorState(this);
 	readonly turnOnContactorState = new TurnOnContactorState(this);	
 	readonly armedState: ArmedState
+	readonly activeState
 	readonly chargeState
 	readonly balancingState
 
@@ -1057,6 +1186,7 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 		this.battery = model.battery;
 		// these must be created after the state machine's model is assigned
 		this.armedState = new ArmedState(this);
+		this.activeState = new ActiveState(this);
 		this.chargeState = new ChargeState(this);
 
 		// balancingState must be created after the batteryReader

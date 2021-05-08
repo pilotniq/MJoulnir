@@ -418,6 +418,15 @@ class Packet
 	}
 
 }
+/*
+class Packet_Values extends Packet
+{
+	constructor()
+	{
+		super()
+	}
+}
+*/
 
 /*
 class Packet
@@ -681,5 +690,6 @@ x/
 */
 module.exports = {
 	VESC: VESC,
-	Packet: Packet
+	Packet: Packet,
+	Packet_Values: Packet
 }

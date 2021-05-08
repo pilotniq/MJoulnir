@@ -1,5 +1,7 @@
 import fs from 'fs';
 
+import * as VESCble from 'vesc-ble'
+
 import * as Model from "./model"
 import * as VESCreader from "./vesc"
 import * as Hardware from "./hardware"
@@ -254,6 +256,10 @@ export class ChargerState extends BoatModelAttribute
 
 export class Battery extends BoatModelAttribute
 {
+	static readonly DANGEROUSLY_LOW_CELL_VOLTAGE = 3.2; 
+	static readonly DANGEROUSLY_HIGH_OPERATING_TEMPERATURE = 55.0; // 60 at cells, 55 to be safe
+	static readonly DANGEROUSLY_HIGH_CHARGING_TEMPERATURE = 45.0; // 
+
 	static readonly LOG_FILE = "/var/log/mjoulnir/battery.log"
 	static readonly BALANCE_MAX_DIFF_VOLTS = 0.0016; // 1.6 mV. Consider imbalanced if diff is more than this
 	static readonly BALANCE_THRESHOLD_V = 0.0008; // drain any cells that exceed minimum by more than this
@@ -364,7 +370,8 @@ export class Battery extends BoatModelAttribute
 	current = -0.101; // running raspberry pi with other hardware off consumes about 101 mA
 	lastCurrentSetTime = Date.now() / 1000.0
 	initial_energy_estimate_from_voltage?: number
-	estimated_energy_change = 0
+	estimated_energy_change = 0  // in Joules
+	estimated_power = 0
 	estimated_energy_from_voltage?: number  // in Joules
 	estimated_energy_from_consumption?: number
 	
@@ -372,11 +379,11 @@ export class Battery extends BoatModelAttribute
 	log_is_opening = false
 	log_is_writing = false
 	
-	constructor(model: BoatModel, batteryReaderSerialPortName: string)
+	constructor(model: BoatModel, batteryReader: BatteryReader.BatteryReader)
 	{
 		super(model);
 
-		this.batteryReader = new BatteryReader.BatteryReader( batteryReaderSerialPortName );
+		this.batteryReader = batteryReader;
 		this.batteryReader.on( 'update', (data) => this.updateModelFromBMS(data) )
 	}
 	
@@ -472,7 +479,8 @@ export class Battery extends BoatModelAttribute
 		const totalVoltage = this.getTotalVoltage()
 		if( totalVoltage !== undefined )
 		{
-			const addedEnergy = interpolated_current * totalVoltage! * dt
+			this.estimated_power = interpolated_current * totalVoltage!
+			const addedEnergy = this.estimated_power * dt
 
 			this.estimated_energy_change += (addedEnergy - batteryEnergyLoss)
 
@@ -537,12 +545,12 @@ export class Battery extends BoatModelAttribute
 		const vescCurrent = this.model.vescState.estimateCurrent()
 
 		const newCurrent = hardwareCurrent + chargerCurrent + vescCurrent
-/*
+
 		console.log( "Estimated Current: " + newCurrent.toFixed(3) + " = " + 
 			hardwareCurrent.toFixed(3) + " + " + 
 			chargerCurrent.toFixed(3) + " + " +
 			vescCurrent )
-*/
+
 		this.setCurrent( newCurrent );
 	}
 
@@ -698,6 +706,17 @@ export class Battery extends BoatModelAttribute
 			.catch( (reason) => console.log( "Log file write failed: " + reason ) )
 	}
 
+	isDangerouslyLow(): boolean
+	{
+		return (this.getMinCellVoltage()! <= Battery.DANGEROUSLY_LOW_CELL_VOLTAGE) ||
+			this.isDangerouslyHighOperatingTemperature()
+	}
+
+	isDangerouslyHighOperatingTemperature(): boolean
+	{
+		return this.getMaxTemperature()! > Battery.DANGEROUSLY_HIGH_OPERATING_TEMPERATURE;
+	}
+
 	toString(): string
 	{
 		return "Battery State: total voltage: " + this.getTotalVoltage()?.toFixed(2) + 
@@ -709,6 +728,8 @@ export class Battery extends BoatModelAttribute
 export class VESC extends BoatModelAttribute
 {
 	static readonly LOG_FILE = "/var/log/mjoulnir/vesc.log"
+
+	vescTalker: VESCreader.VESCtalker
 
 	log_is_opening = false
 	log_is_writing = false
@@ -737,6 +758,35 @@ export class VESC extends BoatModelAttribute
     vesc_id = 0
     vd = 0
     vq = 0
+
+	constructor(model: BoatModel, vescTalker: VESCreader.VESCtalker)
+	{
+		super(model)
+		this.vescTalker = vescTalker
+		this.vescTalker.on( 'values', this.updateMCValuesPacket.bind(this) )
+	}
+
+	connect(): Promise<void>
+	{
+		return this.vescTalker.connect()
+	}
+/*
+	disconnect(): Promise<void>
+	{
+		return this.vescTalker.disconnect()
+	}
+	*/
+	updateMCValuesPacket( packet: VESCble.Packet_Values ): void
+	{
+		this.updateMCValues(packet.voltage_in, 
+            packet.temp_mos, packet.temp_mos_1, packet.temp_mos_2, packet.temp_mos_3, 
+            packet.temp_motor, packet.current_motor, 
+            packet.current_in, packet.current_id, packet.current_iq, 
+            packet.rpm, packet.duty, packet.energy_ah,
+            packet.energy_charged_ah, packet.energy_wh, packet.energy_charged_wh,
+            packet.tachometer, packet.tachometer_abs, packet.pid_pos_now, 
+            packet.fault, packet.controller_id, packet.vd, packet.vq)
+	}
 
 	updateMCValues( voltage_in: number, 
 					temp_mos: number, temp_mos_1: number, temp_mos_2: number, temp_mos_3: number, 
@@ -823,6 +873,7 @@ export class VESC extends BoatModelAttribute
 		const now = new Date()
 
 		const data = {
+			timestamp: now.toISOString(),
 			voltage_in: this.voltage_in,
 			temp_mos: this.temp_mos,
 			temp_mos_1: this.temp_mos_1,
@@ -852,6 +903,11 @@ export class VESC extends BoatModelAttribute
 		this.log_file!.write(logline)
 			.then( () => this.log_is_writing = false)
 			.catch( (reason) => console.log( "VESC Log file write failed: " + reason ) )
+	}
+
+	setPollMCValueInterval( interval: number ): void
+	{
+		this.vescTalker.setPollMCValueInterval( interval )
 	}
 }
 
@@ -888,15 +944,16 @@ export class HardwareState extends BoatModelAttribute
 export class BoatModel extends Model.Model
 {
 	state = new MJoulnirState(this);
-	battery: Battery
 	charger = new ChargerState(this);
-	vescState = new VESC(this);
 	hardware = new HardwareState(this)
+	battery
+	vescState
 
-	constructor( batteryReaderSerialPortName: string )
+	constructor( batteryReader: BatteryReader.BatteryReader, bleVESC: VESCble.VESCinterface )
 	{
 		super()
-		this.battery = new Battery( this, batteryReaderSerialPortName )
+		this.battery = new Battery( this, batteryReader )
+		this.vescState = new VESC( this, new VESCreader.VESCtalker(bleVESC) )
 	}
 
 	async start(): Promise<void>

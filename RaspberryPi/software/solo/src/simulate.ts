@@ -1,20 +1,17 @@
-import * as VESCble from 'vesc-ble'
-
 import * as BoatModel from "./boatModel"
 import * as BLECentral from './bleCentral';
 import * as StateMachine from './stateMachine';
-import { TeslaBatteryReader } from "./batteryReader";
-import { VESCtalker } from "./vesc";
+import * as Simulation from  "./simulation";
 	
 async function delay(seconds: number)
 {
 	return new Promise<void>( resolve => setTimeout( resolve, seconds * 1000 ) );
 }	
 
-const batteryReader = new TeslaBatteryReader("/dev/serial0")
-const bleVESC = new VESCble.VESC()
+const batteryReader = new Simulation.SimulatedBatteryReader()
+const vesc = new Simulation.SimulatedVESC()
 
-const boatModel = new BoatModel.BoatModel(batteryReader, bleVESC)
+const boatModel = new BoatModel.BoatModel(batteryReader, vesc)
 
 boatModel.battery.onChanged( () => {
 	console.log( "Battery: SOC=" + (boatModel.battery.soc_from_min_voltage() * 100).toFixed(0) + "%, " + 
@@ -30,7 +27,7 @@ boatModel.start()
 // BLE startup too early will fail because BLE device not available.
 delay( 10 )
 	.then( () => { console.log( "Starting BLE Central" );
-                   BLECentral.start(boatModel, statemachine) 
+	               BLECentral.start(boatModel, statemachine) 
 	});
 
 

@@ -105,7 +105,11 @@ abstract class WritableBoatModelCharacteristic extends BoatModelCharacteristic
 		{
 			super( model, attribute, characteristicUUID, name, true )
 		}
+
+	abstract onWriteRequest(data: Buffer, offset: number, withoutResponse: boolean, callback: (error_code: number) => void ): void
+		// callback(Bleno.Characteristic.RESULT_SUCCESS, this.value);
 }
+
 class BatteryVoltagesCharacteristic extends BoatModelCharacteristic
 {
 	constructor(model: BoatModel.BoatModel) {
@@ -235,6 +239,7 @@ class StateCharacteristic extends WritableBoatModelCharacteristic
 
 		this.stateMachine = stateMachine
 		this.value = Buffer.alloc(2);
+		this.buildValue()
 		this.model.state.onChanged( this.updateValue.bind(this) );
 	}
 
@@ -254,6 +259,12 @@ class StateCharacteristic extends WritableBoatModelCharacteristic
 			this.stateMachine.requestTransition( newState as BoatModel.State )
 			callback(Bleno.Characteristic.RESULT_SUCCESS);
 		}
+	}
+
+	updateValue()
+	{
+		console.log( "StateCharacteristic: updateValue()")
+		super.updateValue()
 	}
 
 	buildValue()
@@ -291,30 +302,45 @@ class BatteryBalanceCharacteristic extends BoatModelCharacteristic
 
 class PowerCharacteristic extends BoatModelCharacteristic
 {
-	readonly batteryState: BoatModel.Battery
+	readonly battery: BoatModel.Battery
+	readonly vesc: BoatModel.VESC
 
 	// value is 4 bytes:
 	// First two is signed battery power flow in W (range +-32kW). 
 	// Negative when power is consumed, positive when charging
 	// next is two bytes is battery current (signed, current * 100)
+	// next two bytes is accumulated Wh consumed
 	// next byte is ESC duty cycle
 	constructor(model: BoatModel.BoatModel) {
-		super( model, model.state, UUID_CHARACTERISTIC_BATTERY_IMBALANCE, "Battery Imbalance" );
+		super( model, model.state, UUID_CHARACTERISTIC_POWER, "Power" );
 
-		this.value = Buffer.alloc(4);
-		this.batteryState = this.model.battery
-		this.batteryState.onChanged( this.updateValue.bind(this) );
+		this.value = Buffer.alloc(7);
+		this.vesc = this.model.vescState
+		this.battery = this.model.battery
+		this.vesc.onChanged( this.updateValue.bind(this) );
+		this.battery.onChanged( this.updateValue.bind(this) );
 	}
 
 	buildValue()
 	{
-		let mv = Math.round(this.batteryState.imbalance_V! * 1000)
-		let percentx10 = Math.round(this.batteryState.imbalance_soc! * 100 * 100)
+		let power = this.battery.estimated_power
+		let currentx10 = Math.round(this.battery.current * 100)
+		// convert J to Wh
+		let dEnergy = Math.round(this.battery.estimated_energy_change / 3600)
 
-		this.value[0] = mv & 0xff
-		this.value[1] = (mv >> 8 & 0xff)
-		this.value[2] = percentx10 & 0xff;
-		this.value[3] = (percentx10 >> 8) & 0xff
+		this.value[0] = power & 0xff
+		this.value[1] = (power >> 8 & 0xff)
+
+		this.value[2] = currentx10 & 0xff;
+		this.value[3] = (currentx10 >> 8) & 0xff
+
+		this.value[4] = dEnergy & 0xff;
+		this.value[5] = (dEnergy >> 8) & 0xff
+
+		this.value[6] = this.vesc.rpm & 0xff
+		this.value[7] = (this.vesc.rpm >> 8) & 0xff
+
+		this.value[8] = this.vesc.duty_now
 	}
 }
 
@@ -333,40 +359,45 @@ class ElectricDrivetrainService extends Bleno.PrimaryService {
 	}
 }
 
-//
-// Wait until the BLE radio powers on before attempting to advertise.
-// If you don't have a BLE radio, then it will never power on!
-//
-Bleno.bleno.on('stateChange', function(state) {
-  if (state === 'poweredOn') {
-	blenoOn = true;
-	if( started )
-		startAdvertising();
-  }
-  else 
-  {
-    console.log( "bleno stateChage => " + state );
-
-    Bleno.bleno.stopAdvertising();
-  }
-});
 
 let electricDrivetrainService: ElectricDrivetrainService | undefined = undefined
-
-Bleno.bleno.on('advertisingStart', function(err) {
-  if (!err) {
-    console.log('advertising...');
-    //
-    // Once we are advertising, it's time to set up our services,
-    // along with our characteristics.
-    //
-    Bleno.bleno.setServices([electricDrivetrainService!]);
-  }
-});
 
 export function start( model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine): void
 {
     electricDrivetrainService = new ElectricDrivetrainService(model, stateMachine);
+
+  //
+  // Wait until the BLE radio powers on before attempting to advertise.
+  // If you don't have a BLE radio, then it will never power on!
+  //
+  // DOing bleno.on inits HCI stack which may fail if BT is not initialized.
+  // moved into start function to be able to delay startup
+  //
+  Bleno.bleno.on('stateChange', function(state) {
+    if (state === 'poweredOn') {
+	blenoOn = true;
+	if( started )
+		startAdvertising();
+    }
+    else 
+    {
+      console.log( "bleno stateChage => " + state );
+
+      Bleno.bleno.stopAdvertising();
+    }
+  });
+
+  Bleno.bleno.on('advertisingStart', function(err) {
+    if (!err) {
+      console.log('advertising...');
+      //
+      // Once we are advertising, it's time to set up our services,
+      // along with our characteristics.
+      //
+      Bleno.bleno.setServices([electricDrivetrainService!]);
+    }
+  });
+
 
 	if( blenoOn )
 		startAdvertising();
