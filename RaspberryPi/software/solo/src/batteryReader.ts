@@ -32,7 +32,7 @@ export interface BatteryReader extends events.EventEmitter
 export class TeslaBatteryReader extends events.EventEmitter implements BatteryReader 
 {
 	batteryPack: BMS.BMSPack;
-	timeout?: number /* NodeJS.Timer */;
+	timeout?: NodeJS.Timer;
 	intervalSeconds?: number; // just some value before started to make TS happy 
 	retry_count = 0;
 
@@ -112,6 +112,8 @@ export class TeslaBatteryReader extends events.EventEmitter implements BatteryRe
 
 	public async update(): Promise<void>
 	{
+		console.log( "TeslaBatteryRader.update: this=" + this )
+
 		return this.batteryPack.readAll()
 			.then( () => {
 				this.retry_count = 0;
@@ -142,7 +144,8 @@ export class TeslaBatteryReader extends events.EventEmitter implements BatteryRe
 
 				this.emit('update', data );
 
-				let boundFunc =  updateReader.bind(this)
+				console.log( "TeslaBatteryRader.update.then: this=" + this )
+				const boundFunc =  this.update.bind(this)
 				this.timeout = setTimeout( boundFunc, 1000 ) // this.intervalSeconds! * 
 			} )
 			.catch( (error) => { 
@@ -152,9 +155,12 @@ export class TeslaBatteryReader extends events.EventEmitter implements BatteryRe
 				return this.update();
 			} )
 	}
-}
 
+	// updateReader()
+}
+/*
 function updateReader( reader: BatteryReader )
 {
 	reader.update();
 }
+*/

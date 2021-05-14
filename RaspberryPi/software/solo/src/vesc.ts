@@ -52,6 +52,7 @@ export class VESCtalker extends events.EventEmitter
     pollMCValuesintervalSeconds = 0
     inMCValueAutoPoll = false
     pollMCValuesInFlight = 0
+    isConnected = false
 
     constructor( /* model: BoatModel.BoatModel, */ vesc: VESCble.VESCinterface )
     {
@@ -77,7 +78,7 @@ export class VESCtalker extends events.EventEmitter
 
 		this.pollMCValuesintervalSeconds = newInterval;
 
-        if( newInterval != 0 )
+        if( this.isConnected && newInterval != 0 )
             this.autoPollMCValuesWithTimeout()
     }
 
@@ -86,6 +87,9 @@ export class VESCtalker extends events.EventEmitter
         assert( this.pollMCValuesintervalSeconds != 0 )
 
         this.vesc.getValues()
+            .catch( error => 
+                console.log( "VESCtalker.autoPollMCValuesWithTimeout: getValues error " + error ))
+
         this.pollMCValuesTimeout = setTimeout( this.autoPollMCValuesWithTimeout.bind(this), 
             (this.pollMCValuesintervalSeconds * 1000) )
     }
@@ -93,7 +97,10 @@ export class VESCtalker extends events.EventEmitter
     connected(): void 
     {
         console.log( "VESCtalker conencted via BLE" );
-        this.vesc.getValues().then( () => { console.log( "getValues returned" ); });
+        this.isConnected = true
+        this.vesc.getValues()
+            .then( () => { console.log( "getValues returned" ); })
+            .catch( (error) => console.log( "VESCtalker.connected: error: " + error ))
     }
 
     receivePacket( packet: VESCble.Packet ): void

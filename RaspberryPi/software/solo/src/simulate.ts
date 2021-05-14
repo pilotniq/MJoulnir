@@ -8,10 +8,14 @@ async function delay(seconds: number)
 	return new Promise<void>( resolve => setTimeout( resolve, seconds * 1000 ) );
 }	
 
-const batteryReader = new Simulation.SimulatedBatteryReader()
-const vesc = new Simulation.SimulatedVESC()
+const simulatedBoat = new Simulation.SimulatedBoat()
 
-const boatModel = new BoatModel.BoatModel(batteryReader, vesc)
+// const batteryReader = new Simulation.SimulatedBatteryReader()
+// const vesc = new Simulation.SimulatedVESC()
+// const lowlevelHardware = new Simulation.SimulatedHardware()
+
+const boatModel = new BoatModel.BoatModel( simulatedBoat.batteryReader, 
+	simulatedBoat.vesc, simulatedBoat )
 
 boatModel.battery.onChanged( () => {
 	console.log( "Battery: SOC=" + (boatModel.battery.soc_from_min_voltage() * 100).toFixed(0) + "%, " + 
@@ -24,8 +28,8 @@ const statemachine = new StateMachine.ElectricDrivetrainStateMachine( boatModel 
 boatModel.start()
 	.then( () => statemachine.start() )
 
-// BLE startup too early will fail because BLE device not available.
-delay( 10 )
+// BLE startup too early will fail because BLE device not available. 9 works
+delay( 5 )
 	.then( () => { console.log( "Starting BLE Central" );
 	               BLECentral.start(boatModel, statemachine) 
 	});

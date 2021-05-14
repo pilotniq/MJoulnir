@@ -5,6 +5,7 @@ import * as BLECentral from './bleCentral';
 import * as StateMachine from './stateMachine';
 import { TeslaBatteryReader } from "./batteryReader";
 import { VESCtalker } from "./vesc";
+import * as RaspiHardware from "./raspiHardware";
 	
 async function delay(seconds: number)
 {
@@ -13,8 +14,8 @@ async function delay(seconds: number)
 
 const batteryReader = new TeslaBatteryReader("/dev/serial0")
 const bleVESC = new VESCble.VESC()
-
-const boatModel = new BoatModel.BoatModel(batteryReader, bleVESC)
+const hardware = new RaspiHardware.RaspiHardware()
+const boatModel = new BoatModel.BoatModel(batteryReader, bleVESC, hardware )
 
 boatModel.battery.onChanged( () => {
 	console.log( "Battery: SOC=" + (boatModel.battery.soc_from_min_voltage() * 100).toFixed(0) + "%, " + 

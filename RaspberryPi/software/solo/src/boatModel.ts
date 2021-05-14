@@ -4,13 +4,17 @@ import * as VESCble from 'vesc-ble'
 
 import * as Model from "./model"
 import * as VESCreader from "./vesc"
-import * as Hardware from "./hardware"
+// import * as Hardware from "./hardware"
 import * as BatteryReader from './batteryReader';
-import { Packet } from 'vesc-ble';
+// import { Packet } from 'vesc-ble';
 import { FileHandle } from 'fs/promises';
+import { LowLevelHardware } from './lowLevelHardware';
+
+// import { Hardware } from './hardware';
 
 
-export enum State { Booting = 0, Idle = 1, Armed = 2, Charging = 3, Balancing = 4, Active = 5, Error = 6 }
+export enum State { Off = 0, Booting = 1, Idle = 2, Armed = 3, Charging = 4, Balancing = 5, 
+	Active = 6, Error = 7 }
 
 class BoatModelAttribute extends Model.ModelAttribute
 {
@@ -22,6 +26,7 @@ class BoatModelAttribute extends Model.ModelAttribute
 		this.model = model
 	}
 }
+
 export class MJoulnirState extends BoatModelAttribute
 {
 	public state: State;
@@ -40,6 +45,8 @@ export class MJoulnirState extends BoatModelAttribute
 
 	set( newState: State ): void
 	{
+		console.log( "boatModel: MJoulnirState.set(" + newState + ")" )
+
 		if( newState != this.state )
 		{
 			console.log( "MJoulnirState changed to " + newState );
@@ -411,13 +418,15 @@ export class Battery extends BoatModelAttribute
 		return this.batteryReader.setBalanceTimer( safety_timer )
 		.then( () => this.batteryReader.balance( cells_to_balance ) )
 		.then( () => { this.is_balancing = true; } )
+		.catch( (error) => console.log( "Battery.balance_cells error: " + error ) )
 	}
 
 	public async stopBalancing(): Promise<void>
 	{
 		return this.batteryReader.stopBalancing()
 			.then( () => { this.is_balancing = false } )
-	}
+			.catch( (error) => console.log( "Battery.stopBalancing error: " + error ) )
+		}
 
 	updateModelFromBMS(data: BatteryReader.UpdateData): void
 	{
@@ -476,6 +485,19 @@ export class Battery extends BoatModelAttribute
 
 		// update energy
 		const batteryEnergyLoss = interpolated_current * interpolated_current * this.totalInnerResistance * dt
+
+		/*
+		// calculate current compensated voltages (voltages cells would have had if current had not been draw)
+		this.currentCompensatedVoltages = []
+
+		for( let moduleIndex = 0; moduleIndex < this.voltages.length; moduleIndex++ )
+		{
+			this.currentCompensatedVoltages[moduleIndex] = []
+
+			for( let cellIndex = 0; cellIndex < )
+		}
+		*/
+
 		const totalVoltage = this.getTotalVoltage()
 		if( totalVoltage !== undefined )
 		{
@@ -801,6 +823,8 @@ export class VESC extends BoatModelAttribute
 					controller_id: number, 
 					vd: number, vq: number): void
 	{
+		console.log( "BoatModel.VESC.updateMCValues called")
+		
 		this.voltage_in = voltage_in
 		this.temp_mos = temp_mos
 		this.temp_mos_1 = temp_mos_1
@@ -915,18 +939,25 @@ export class HardwareState extends BoatModelAttribute
 {
 	contactor_on = false
 	precharge_on = false
+	hardware: LowLevelHardware
 
-	setPrecharge( prechargeState: boolean )
+	constructor( model: BoatModel, hardware: LowLevelHardware )
 	{
-		Hardware.setPrecharge( prechargeState ? 1 : 0)
-		this.precharge_on = this.precharge_on
+		super(model)
+		this.hardware = hardware
+	}
+
+	setPrecharge( prechargeState: boolean ): void
+	{
+		this.hardware.setPrecharge( prechargeState )
+		this.precharge_on = prechargeState
 
 		this.model.battery.updateEstimatedCurrent()
 	}
 
-	setContactor( contactorState: boolean )
+	setContactor( contactorState: boolean ): void
 	{
-		Hardware.setContactor( contactorState ? 1 : 0)
+		this.hardware.setContactor( contactorState )
 		this.contactor_on = contactorState
 	}
 
@@ -941,19 +972,22 @@ export class HardwareState extends BoatModelAttribute
 			return -0.102
 	}
 }
+
 export class BoatModel extends Model.Model
 {
-	state = new MJoulnirState(this);
-	charger = new ChargerState(this);
-	hardware = new HardwareState(this)
+	state = new MJoulnirState(this)
+	charger = new ChargerState(this)
+	hardware
 	battery
 	vescState
 
-	constructor( batteryReader: BatteryReader.BatteryReader, bleVESC: VESCble.VESCinterface )
+	constructor( batteryReader: BatteryReader.BatteryReader, bleVESC: VESCble.VESCinterface,
+		hardware: LowLevelHardware )
 	{
 		super()
 		this.battery = new Battery( this, batteryReader )
 		this.vescState = new VESC( this, new VESCreader.VESCtalker(bleVESC) )
+		this.hardware = new HardwareState( this, hardware )
 	}
 
 	async start(): Promise<void>
