@@ -20,6 +20,7 @@ export class RaspiHardware implements LowLevelHardware
 
 	setContactor( value: boolean ): void
 	{
+		console.log( "RaspiHardware: setContactor( " + value + " )" )
 		this.contactorPin.writeSync( value ? 1 : 0)
 	}
 

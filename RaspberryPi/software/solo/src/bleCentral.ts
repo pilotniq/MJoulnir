@@ -74,7 +74,7 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 	abstract buildValue(): void
 
 	updateValue() {
-		// console.log( "BoatModelCharacteristic.updateValue entry")
+		console.log( "BoatModelCharacteristic.updateValue entry for " + this.name )
 		const oldValue = Buffer.from( this.value )
 
 		this.buildValue();
@@ -242,10 +242,10 @@ class TemperaturesCharacteristic extends BoatModelCharacteristic
 
 		if( this.batteryState.isValid )
 		{
-			for( let i = 0; i < 3; i++ )
-				for( let j = 0; j < 2; j++ )
+			for( let i = 0; i < this.batteryState.temperatures.length; i++ )
+				for( let j = 0; j < this.batteryState.temperatures[i].length; j++ )
 				{
-					const valueIndex = 5 + i * 2 + j
+					const valueIndex = 5 + i * this.batteryState.temperatures[i].length + j
 					this.value[valueIndex] = Math.round(this.batteryState.temperatures[i][j])
 				}
 		}
@@ -341,7 +341,7 @@ class PowerCharacteristic extends BoatModelCharacteristic
 	constructor(model: BoatModel.BoatModel) {
 		super( model, model.state, UUID_CHARACTERISTIC_POWER, "Power" );
 
-		this.value = Buffer.alloc(7);
+		this.value = Buffer.alloc(9);
 		this.vesc = this.model.vescState
 		this.battery = this.model.battery
 		this.vesc.onChanged( this.updateValue.bind(this) );
@@ -382,7 +382,8 @@ class ElectricDrivetrainService extends Bleno.PrimaryService {
               	new BatteryVoltagesCharacteristic(model),
 				new StateCharacteristic(model, stateMachine),
 				new BatteryBalanceCharacteristic(model),
-				new TemperaturesCharacteristic(model)
+				new TemperaturesCharacteristic(model),
+		new PowerCharacteristic(model)
       	      ]
   	  });
 	}

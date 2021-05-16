@@ -824,7 +824,7 @@ export class VESC extends BoatModelAttribute
 					vd: number, vq: number): void
 	{
 		console.log( "BoatModel.VESC.updateMCValues called")
-		
+		// console.log( "current_in=" + current_in + ", voltage_in=" + voltage_in + ", duty=" + duty );
 		this.voltage_in = voltage_in
 		this.temp_mos = temp_mos
 		this.temp_mos_1 = temp_mos_1
@@ -850,12 +850,12 @@ export class VESC extends BoatModelAttribute
 		this.vq = vq
 		
 		this.isValid = true
-		/*
+
 		console.log( "Got VESC Values, voltage_in=" + voltage_in + 
 			" V, current_in=" + current_in + 
 			" A, temp_mos=" + temp_mos.toFixed(1) + 
 			" C, duty=" + this.duty_now + ", rpm=" + this.rpm );
-		*/
+
 		this.writeLog()
 		this.signalUpdated();
 	}

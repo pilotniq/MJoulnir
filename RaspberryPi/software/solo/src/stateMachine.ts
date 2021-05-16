@@ -184,7 +184,8 @@ class IdleState extends MJoulnirState
 			case this.stateMachine.armedState:
 				if( battery.isValid && !battery.isDangerouslyLow() )
 				{
-					this.transitionTo( nextState )
+					console.log( "Transitioning to turnOnContactorState" )
+					this.transitionTo( this.stateMachine.turnOnContactorState )
 					return true;
 				}
 				else
