@@ -45,21 +45,24 @@ class Model: NSObject, ObservableObject
   }
 
   enum State: UInt8 {
-    case Booting = 0
-    case Idle = 1
-    case Armed = 2
-    case Charging = 3
-    case Balancing = 4
-    case Active = 5
-    case Error = 6
+    case Off = 0
+    case Booting = 1
+    case Idle = 2
+    case Armed = 3
+    case Charging = 4
+    case Balancing = 5
+    case Active = 6
+    case Error = 7
 
-    static let names = [State.Booting: "Booting",
-                                     State.Idle: "Idle",
-                                     State.Armed: "Armed",
-                                     State.Charging: "Charging",
-                                     State.Balancing: "Balancing",
-                                     State.Active: "Active",
-                                     State.Error: "Error"];
+    static let names = [State.Off: "Off",
+                        State.Booting: "Booting",
+                        State.Idle: "Idle",
+                        State.Armed: "Armed",
+                        State.Charging: "Charging",
+                        State.Balancing: "Balancing",
+                        State.Active: "Active",
+                        State.Error: "Error"
+                       ];
     var name: String
     {
       return Model.State.names[self]!
@@ -71,14 +74,19 @@ class Model: NSObject, ObservableObject
   @Published private(set) var balance: Balance?
   @Published private(set) var temperatures: Temperatures?
   @Published private(set) var power: Power?
+  @Published private(set) var batteryLevel: Int?
 
   private var centralManager: CBCentralManager!
   private var locationManager: CLLocationManager!
 
   private var mjoulnir: CBPeripheral!
+
   private var service: CBService!
+  private var batteryService: CBService!
+
   private var characteristic_state: CBCharacteristic!
   private var characteristic_balance: CBCharacteristic!
+  private var characteristic_battery_level: CBCharacteristic!
   private var characteristic_power: CBCharacteristic!
   private var characteristic_temperatures: CBCharacteristic!
 
@@ -134,6 +142,8 @@ class Model: NSObject, ObservableObject
     var data = Data(capacity:1)
     data.append(newState.rawValue)
     self.mjoulnir!.writeValue( data, for: self.characteristic_state, type: CBCharacteristicWriteType.withResponse )
+    // Try below, otherwise we don't get a notification?
+    // self.mjoulnir!.readValue(for: self.characteristic_state)
   }
 }
 
@@ -215,12 +225,18 @@ extension Model: CBCentralManagerDelegate {
   func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
     print( "Connected" )
     self.bluetoothState = .connected
-    self.mjoulnir.discoverServices([CBUUIDs.BLEMjoulnirService_UUID])
+    self.mjoulnir.discoverServices([CBUUIDs.BLEMjoulnirService_UUID, CBUUIDs.BLEBatteryService_UUID])
     self.mjoulnir.delegate = self
   }
   func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
     print( "Peripheral disconnected, rescanning" )
+    self.bluetoothState = .scanning
     startScanning()
+  }
+
+  func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+    print( "Failed to connect to peripheral, retrying..." )
+    centralManager.connect(mjoulnir)
   }
 }
 
@@ -234,11 +250,15 @@ extension Model: CBPeripheralDelegate {
       if service.uuid == CBUUIDs.BLEMjoulnirService_UUID
       {
         self.service = service
-        break
+        peripheral.discoverCharacteristics(nil, for: service)
+      }
+      if service.uuid == CBUUIDs.BLEBatteryService_UUID
+      {
+        self.batteryService = service
+        peripheral.discoverCharacteristics(nil, for: service)
       }
     }
 
-    peripheral.discoverCharacteristics(nil, for: service)
   }
 
   func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
@@ -273,6 +293,12 @@ extension Model: CBPeripheralDelegate {
         peripheral.readValue(for: characteristic)
         break
 
+      case CBUUIDs.BLECharacteristic_BatteryLevel_UUID:
+        self.characteristic_battery_level = characteristic
+        peripheral.setNotifyValue(true, for: characteristic)
+        peripheral.readValue(for: characteristic)
+        break
+
       default:
         break
       }
@@ -286,6 +312,12 @@ extension Model: CBPeripheralDelegate {
     print( "didUpdateValueFor called, uuid=\(characteristic.uuid)" );
     switch characteristic.uuid
     {
+      case CBUUIDs.BLECharacteristic_BatteryLevel_UUID:
+        let value = characteristic.value!.first!
+        print( "Read battery level: \(value)" )
+        self.batteryLevel = Int(value)
+        break
+
       case CBUUIDs.BLEMjoulnirCharacteristic_State_UUID:
         let value = characteristic.value!.first!
         let theState = Model.State(rawValue: value)
@@ -327,13 +359,15 @@ extension Model: CBPeripheralDelegate {
       break
 
       case CBUUIDs.BLEMjoulnirCharacteristic_Power_UUID:
+        // TODO: make resilient to fewer bytes
+        // if
         let power_chunk = characteristic.value!.subdata(in:0..<2)
+        let power: Int16 = power_chunk.toInteger( endian: .little )
         let current_chunk = characteristic.value!.subdata(in:2..<4)
         let wh_consumed_chunk = characteristic.value!.subdata(in:4..<6)
         let motor_rpm_chunk = characteristic.value!.subdata(in:6..<8)
-        let duty_chunk = characteristic.value!.subdata(in:9..<10)
+        let duty_chunk = characteristic.value!.subdata(in:8..<9)
 
-        let power: Int16 = power_chunk.toInteger( endian: .little )
         let current : Int16 = current_chunk.toInteger(endian: .little)
         let energy_wh : Int16 = wh_consumed_chunk.toInteger(endian: .little)
         let motor_rpm :Int16 = motor_rpm_chunk.toInteger(endian: .little)

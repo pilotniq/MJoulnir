@@ -8,19 +8,32 @@
 
 import UIKit
 import CoreBluetooth
+import Combine
 
 class PageViewController: UIPageViewController, UIPageViewControllerDelegate, UIPageViewControllerDataSource  {
 
   private var model: Model!
+  var stateWatcher: AnyCancellable?
 
   lazy var orderedViewControllers: [UIViewController] = {
-      return [self.newVc(viewController: "sbMainVC"),
-              self.newVc(viewController: "sbBlueVC")]
+      return [self.newVc(viewController: "idleVC"),
+              self.newVc(viewController: "sbMainVC"),
+              self.newVc(viewController: "sbBlueVC"),
+              ]
   }()
 
   func setModel( model: Model )
   {
     self.model = model;
+/*
+    stateWatcher = model.$state.sink { state in
+      switch(state)
+      {
+      case .Armed:
+        self.
+      }
+    }
+*/
   }
 
   override func viewDidLoad() {
@@ -54,7 +67,11 @@ class PageViewController: UIPageViewController, UIPageViewControllerDelegate, UI
     if( vc is TemperaturesViewController )
     {
       (vc as! TemperaturesViewController).setModel( model: self.model )
+    }
 
+    if( vc is IdleViewController)
+    {
+      (vc as! IdleViewController).setModel( model: self.model )
     }
 
     return vc
