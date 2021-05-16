@@ -858,6 +858,7 @@ export class VESC extends BoatModelAttribute
 
 		this.writeLog()
 		this.signalUpdated();
+                this.model.battery.updateEstimatedCurrent()
 	}
 	
 	estimateCurrent(): number
