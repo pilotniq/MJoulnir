@@ -64,7 +64,7 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 		this.updateValueCallback = undefined;
 	}
 
-	onReadRequest(offset: number, callback: (error_code: number, data?: Buffer | undefined) => void )
+	onReadRequest(offset: number, callback: (error_code: number, data?: Buffer) => void )
 	{
 		console.log( "BoatModelCharacteristic.onReadRequest")
 		callback(Bleno.Characteristic.RESULT_SUCCESS, this.value);
@@ -119,6 +119,7 @@ class BatteryLevelCharacteristic extends BoatModelCharacteristic
 		const soc = battery.soc_from_min_voltage()
 		// TODO: Improve soc estimate from battery
 		this.value[0] = Math.round( soc * 100 )
+		console.log( "Battery Level: soc=" + soc + " this.value[0]=" + this.value[0] );
 	}
 }
 
@@ -367,9 +368,9 @@ class PowerCharacteristic extends BoatModelCharacteristic
 		this.value[6] = this.vesc.rpm & 0xff
 		this.value[7] = (this.vesc.rpm >> 8) & 0xff
 
-		this.value[8] = this.vesc.duty_now
+		this.value[8] = Math.round(this.vesc.duty_now * 100)
 
-		console.log( "PowerCharacteristic.buildValue called")
+		console.log( "PowerCharacteristic.buildValue called. duty_now=" + this.vesc.duty_now)
 	}
 }
 

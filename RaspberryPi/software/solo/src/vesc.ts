@@ -131,6 +131,16 @@ export class VESCtalker extends events.EventEmitter
             "tachometer", "tachometer_abs", "position", "fault_code",
             "vesc_id", "vd", "vq" ]
         */
+	/* convert duty_now into something usable */
+
+	if( packet.duty > 32 )
+	{
+		var real_duty = -(65.536 - packet.duty)
+
+		console.log( "Translated duty " + packet.duty + " to " + real_duty )
+		packet.duty = real_duty
+	}
+
        this.emit( "values", packet )
        /*
         this.vescModel.updateMCValues( packet.voltage_in, 
