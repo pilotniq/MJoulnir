@@ -48,7 +48,14 @@ export declare class Packet_CAN extends Packet
     data: number[];
 }
 
-export declare class VESC extends EventEmitter
+export interface VESCinterface extends EventEmitter
+{
+    async ble_connect( ): Promise<void>;
+    async getValues(): Promise<void>;
+    sendCAN( id: number, data: Uint8Array, withResponse: boolean ): Promise<void>;
+}
+
+export declare class VESC extends EventEmitter implements VESCinterface
 {
     static Types: { [name: string]: number };
 

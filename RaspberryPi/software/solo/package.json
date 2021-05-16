@@ -9,7 +9,11 @@
   "dependencies": {
     "@abandonware/bleno": "^0.5.1-3",
     "@abandonware/noble": "*",
+    "@types/koa": "^2.13.1",
+    "@types/koa-router": "^7.4.2",
     "@types/node": "^14.14.36",
+    "koa": "^2.13.1",
+    "koa-router": "^10.0.0",
     "onoff": "^6.0.1",
     "rfdc": "^1.3.0",
     "tesla-slave-bms": "file:../bms",
@@ -27,7 +31,8 @@
   },
   "main": "dist/app.js",
   "scripts": {
-    "start": "tsc && NOBLE_HCI_DEVICE_ID=0 BLENO_HCI_DEVICE_ID=1 node --inspect dist/app.js",
+    "start": "tsc && NOBLE_HCI_DEVICE_ID=0 BLENO_HCI_DEVICE_ID=1 node --inspect --trace-warnings dist/app.js",
+    "simulate": "tsc && NOBLE_HCI_DEVICE_ID=0 BLENO_HCI_DEVICE_ID=1 node --inspect --trace-warnings dist/simulate.js",
     "vescTest": "tsc && node dist/vescTest.js",
     "lint": "eslint . --ext .ts",
     "test": "tsc && ava"

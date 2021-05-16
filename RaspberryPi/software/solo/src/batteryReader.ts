@@ -11,10 +11,28 @@ export interface UpdateData {
 	alert: boolean,
 	update_imbalance: boolean
 }
-export class BatteryReader extends events.EventEmitter
+
+export interface BatteryReader extends events.EventEmitter
+{
+	close(): void
+	start( intervalSeconds: number): Promise<void>
+	setBalanceTimer( seconds: number ): Promise<void>
+	balance( cells: boolean[][]): Promise<void>
+	stopBalancing(): Promise<void>
+
+	stop(): void
+
+	setInterval( newInterval: number ): void
+
+	poll(update_imbalance: boolean): Promise<void>
+
+	update(): Promise<void>
+}
+
+export class TeslaBatteryReader extends events.EventEmitter implements BatteryReader 
 {
 	batteryPack: BMS.BMSPack;
-	timeout?: number;
+	timeout?: NodeJS.Timer;
 	intervalSeconds?: number; // just some value before started to make TS happy 
 	retry_count = 0;
 
@@ -41,6 +59,7 @@ export class BatteryReader extends events.EventEmitter
 		return this.batteryPack.init()
 			.then( () => this.batteryPack.wakeBoards() )
 			.then( () => this.setInterval( intervalSeconds ))
+			.catch( (error) => console.log( "Error starting battery reader: " + error ))
 	}
 
 	async setBalanceTimer( seconds: number ): Promise<void>
@@ -68,7 +87,7 @@ export class BatteryReader extends events.EventEmitter
 
 	stop(): void
 	{
-		clearTimeout( this.timeout );
+		clearTimeout( this.timeout! );
 		this.timeout = undefined;
 	}
 
@@ -93,6 +112,8 @@ export class BatteryReader extends events.EventEmitter
 
 	public async update(): Promise<void>
 	{
+		console.log( "TeslaBatteryRader.update: this=" + this )
+
 		return this.batteryPack.readAll()
 			.then( () => {
 				this.retry_count = 0;
@@ -123,8 +144,9 @@ export class BatteryReader extends events.EventEmitter
 
 				this.emit('update', data );
 
-				
-				this.timeout = setTimeout( updateReader, this.intervalSeconds! * 1000, this );
+				console.log( "TeslaBatteryRader.update.then: this=" + this )
+				const boundFunc =  this.update.bind(this)
+				this.timeout = setTimeout( boundFunc, 1000 ) // this.intervalSeconds! * 
 			} )
 			.catch( (error) => { 
 				this.retry_count++;
@@ -133,9 +155,12 @@ export class BatteryReader extends events.EventEmitter
 				return this.update();
 			} )
 	}
-}
 
-async function updateReader( reader: BatteryReader )
-{
-	return reader.update();
+	// updateReader()
 }
+/*
+function updateReader( reader: BatteryReader )
+{
+	reader.update();
+}
+*/
