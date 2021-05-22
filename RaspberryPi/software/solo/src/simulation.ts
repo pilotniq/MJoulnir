@@ -299,7 +299,7 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
             return
         }
 
-        console.log( "simulate called, energy_wh in=" + this.mcValues.energy_wh)
+        // console.log( "simulate called, energy_wh in=" + this.mcValues.energy_wh)
 
         const power = -10000 * this.mcValues.duty
         const now = Date.now()
@@ -307,14 +307,14 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
 
         this.last_simulation_update = now
 
-        console.log( "simulate called, energy_wh in=" + this.mcValues.energy_wh + ", dt=" + dt)
+        // console.log( "simulate called, energy_wh in=" + this.mcValues.energy_wh + ", dt=" + dt)
 
         this.mcValues.current_in = power / this.mcValues.voltage_in
         this.mcValues.energy_ah += this.mcValues.current_in * dt / 3600
         this.mcValues.energy_wh += this.mcValues.current_in * this.mcValues.voltage_in * dt / 3600
         this.mcValues.invalid = false
         this.mcValues.isComplete = true
-        console.log( "simulate called, energy_wh=" + this.mcValues.energy_wh)
+        // console.log( "simulate called, energy_wh=" + this.mcValues.energy_wh)
     }
 }
 

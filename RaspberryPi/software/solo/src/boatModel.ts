@@ -13,7 +13,7 @@ import { LowLevelHardware } from './lowLevelHardware';
 // import { Hardware } from './hardware';
 
 
-export enum State { Off = 0, Booting = 1, Idle = 2, Armed = 3, Charging = 4, Balancing = 5, 
+export enum State { Off = 0, Idle = 1, Arming = 2, Armed = 3, Charging = 4, Balancing = 5, 
 	Active = 6, Error = 7 }
 
 class BoatModelAttribute extends Model.ModelAttribute
@@ -31,11 +31,11 @@ export class MJoulnirState extends BoatModelAttribute
 {
 	public state: State;
 
-	constructor(model: BoatModel)
+	constructor(model: BoatModel, state: State )
 	{
 		super(model);
 
-		this.state = State.Booting
+		this.state = state
 	}
 	
 	toString(): string
@@ -976,7 +976,7 @@ export class HardwareState extends BoatModelAttribute
 
 export class BoatModel extends Model.Model
 {
-	state = new MJoulnirState(this)
+	state = new MJoulnirState(this, State.Idle)
 	charger = new ChargerState(this)
 	hardware
 	battery

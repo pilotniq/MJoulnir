@@ -224,7 +224,7 @@ class TurnOnContactorState extends MJoulnirState
 
 	constructor(machine: ElectricDrivetrainStateMachine)
 	{
-		super( BoatModel.State.Booting, machine, "Turn On Contactor");
+		super( BoatModel.State.Arming, machine, "Turn On Contactor");
 	}
 
 	canEnter(): boolean
@@ -1279,6 +1279,10 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 				state = this.armedState
 				break;
 
+			case BoatModel.State.Arming:
+				state = this.turnOnContactorState
+				break
+
 			case BoatModel.State.Charging:
 				state = this.chargeState
 				break;
@@ -1289,7 +1293,6 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 
 			case BoatModel.State.Off:
 			case BoatModel.State.Active:
-			case BoatModel.State.Booting:
 			case BoatModel.State.Error:
 				return false;
 		}
