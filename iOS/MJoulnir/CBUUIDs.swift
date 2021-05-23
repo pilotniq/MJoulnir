@@ -21,6 +21,7 @@ struct CBUUIDs{
   static let kBLE_MJoulnirCharacteristic_Balance_UUID = "71498776-a04c-4800-a1d9-25ebc70b0003"
   static let kBLE_MJoulnirCharacteristic_Temperatures_UUID = "71498776-a04c-4800-a1d9-25ebc70b0004"
   static let kBLE_MJoulnirCharacteristic_Power_UUID = "71498776-a04c-4800-a1d9-25ebc70b0005"
+  static let kBLE_MJoulnirCharacteristic_ChargerState_UUID = "71498776-a04c-4800-a1d9-25ebc70b0006"
 //    static let MaxCharacters = 20
 
 
@@ -32,8 +33,5 @@ struct CBUUIDs{
   static let BLEMjoulnirCharacteristic_Balance_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_Balance_UUID)
   static let BLEMjoulnirCharacteristic_Temperatures_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_Temperatures_UUID)
   static let BLEMjoulnirCharacteristic_Power_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_Power_UUID)
-  /*
-    static let BLE_Characteristic_uuid_Tx = CBUUID(string: kBLE_Characteristic_uuid_Tx)//(Property = Write without response)
-    static let BLE_Characteristic_uuid_Rx = CBUUID(string: kBLE_Characteristic_uuid_Rx)// (Property = Read/Notify)
- */
+  static let BLEMjoulnirCharacteristic_ChargerState_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_ChargerState_UUID)
 }

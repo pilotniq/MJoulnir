@@ -27,6 +27,9 @@ class MainStatusViewController: UIViewController, SetModel {
   @IBOutlet weak var disarmedView: UIView!
   @IBOutlet weak var activeView: UIView!
 
+  @IBOutlet weak var chargingView: UIView!
+  @IBOutlet weak var balancingView: UIView!
+
   override func viewDidLoad() {
         super.viewDidLoad()
     }
@@ -95,24 +98,48 @@ class MainStatusViewController: UIViewController, SetModel {
         self.disarmedView.isHidden = false
         self.armedView.isHidden = true
         self.activeView.isHidden = true
+        self.chargingView.isHidden = true
+        self.balancingView.isHidden = true
         break
 
       case .Armed:
         self.disarmedView.isHidden = true
         self.armedView.isHidden = false
         self.activeView.isHidden = true
+        self.chargingView.isHidden = true
+        self.balancingView.isHidden = true
+        break
+
+      case .Charging:
+        self.disarmedView.isHidden = true
+        self.armedView.isHidden = true
+        self.activeView.isHidden = true
+        self.chargingView.isHidden = false
+        self.balancingView.isHidden = true
+        break
+
+      case .Balancing:
+        self.disarmedView.isHidden = true
+        self.armedView.isHidden = true
+        self.activeView.isHidden = true
+        self.chargingView.isHidden = true
+        self.balancingView.isHidden = false
         break
 
       case .Active:
         self.armedView.isHidden = true
         self.disarmedView.isHidden = true
         self.activeView.isHidden = false
+        self.chargingView.isHidden = true
+        self.balancingView.isHidden = true
         break
 
       default:
         self.disarmedView.isHidden = true
         self.armedView.isHidden = true
         self.activeView.isHidden = true
+        self.chargingView.isHidden = true
+        self.balancingView.isHidden = true
         break;
       }
       /*
@@ -147,7 +174,7 @@ class MainStatusViewController: UIViewController, SetModel {
     self.model?.requestStateChange(newState: .Armed)
   }
 */
-  func updateSOC( percentage: Int? )
+  func updateSOC( percentage: UInt? )
     {
       if let percentagex = percentage
       {

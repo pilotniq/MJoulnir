@@ -25,6 +25,11 @@ struct Temperatures
   var motor: Int8?
   var battery: [[Int8?]]
   var pi: Int8?
+
+  func getMaxBatteryTemperature() -> Int8
+  {
+    return battery.reduce( -127, { acc, cells in cells.reduce( acc, { acc2, temp in temp! > acc2 ? temp! : acc2 } )})
+  }
 }
 
 struct Power
@@ -34,6 +39,17 @@ struct Power
   var energy_Wh: Int
   var duty_cycle: Int
   var motor_rpm: Int
+}
+
+struct ChargerState
+{
+  var detected: Bool
+  var powered: Bool
+  var charging: Bool
+  var errorBits: UInt8
+  var outputVoltage: Double
+  var outputCurrent: Double
+  var ackChargeWh: Int
 }
 
 class Model: NSObject, ObservableObject
@@ -46,8 +62,8 @@ class Model: NSObject, ObservableObject
 
   enum State: UInt8 {
     case Off = 0
-    case Booting = 1
-    case Idle = 2
+    case Idle = 1
+    case Arming = 2
     case Armed = 3
     case Charging = 4
     case Balancing = 5
@@ -55,8 +71,8 @@ class Model: NSObject, ObservableObject
     case Error = 7
 
     static let names = [State.Off: "Off",
-                        State.Booting: "Booting",
                         State.Idle: "Idle",
+                        State.Arming: "Arming",
                         State.Armed: "Armed",
                         State.Charging: "Charging",
                         State.Balancing: "Balancing",
@@ -74,7 +90,8 @@ class Model: NSObject, ObservableObject
   @Published private(set) var balance: Balance?
   @Published private(set) var temperatures: Temperatures?
   @Published private(set) var power: Power?
-  @Published private(set) var batteryLevel: Int?
+  @Published private(set) var batteryLevel: UInt?
+  @Published private(set) var chargerState: ChargerState?
 
   private var centralManager: CBCentralManager!
   private var locationManager: CLLocationManager!
@@ -89,6 +106,7 @@ class Model: NSObject, ObservableObject
   private var characteristic_battery_level: CBCharacteristic!
   private var characteristic_power: CBCharacteristic!
   private var characteristic_temperatures: CBCharacteristic!
+  private var characteristic_chargerState: CBCharacteristic!
 
   override public init()
   {
@@ -293,6 +311,12 @@ extension Model: CBPeripheralDelegate {
         peripheral.readValue(for: characteristic)
         break
 
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerState_UUID:
+        self.characteristic_chargerState = characteristic
+        peripheral.setNotifyValue(true, for: characteristic)
+        peripheral.readValue(for: characteristic)
+        break
+
       case CBUUIDs.BLECharacteristic_BatteryLevel_UUID:
         self.characteristic_battery_level = characteristic
         peripheral.setNotifyValue(true, for: characteristic)
@@ -315,7 +339,8 @@ extension Model: CBPeripheralDelegate {
       case CBUUIDs.BLECharacteristic_BatteryLevel_UUID:
         let value = characteristic.value!.first!
         print( "Read battery level: \(value)" )
-        self.batteryLevel = Int(value)
+        self.batteryLevel = UInt(value)
+        print( "Read battery level: \(value), self.level=" )
         break
 
       case CBUUIDs.BLEMjoulnirCharacteristic_State_UUID:
@@ -326,37 +351,37 @@ extension Model: CBPeripheralDelegate {
         self.state = theState
         break
 
-    case CBUUIDs.BLEMjoulnirCharacteristic_Balance_UUID:
-      let voltage = (Double(characteristic.value![0]) + Double(characteristic.value![1]) * 256) / 1000.0
-      let soc = (Double(characteristic.value![2]) + Double(characteristic.value![3]) * 256) / 10000.0
+      case CBUUIDs.BLEMjoulnirCharacteristic_Balance_UUID:
+        let voltage = (Double(characteristic.value![0]) + Double(characteristic.value![1]) * 256) / 1000.0
+        let soc = (Double(characteristic.value![2]) + Double(characteristic.value![3]) * 256) / 10000.0
 
-      print( "BLE: balance: \(voltage) V, \(soc * 100) % soc" )
-      self.balance = Balance(voltage: voltage, soc: soc)
-      break
+        print( "BLE: balance: \(voltage) V, \(soc * 100) % soc" )
+        self.balance = Balance(voltage: voltage, soc: soc)
+        break
 
-    case CBUUIDs.BLEMjoulnirCharacteristic_Temperatures_UUID:
-      let vesc_mos = temperatureIntOrNil( byte: characteristic.value![0] )
-      let vesc_mos_1 = temperatureIntOrNil( byte: characteristic.value![1])
-      let vesc_mos_2 = temperatureIntOrNil( byte: characteristic.value![2])
-      let vesc_mos_3 = temperatureIntOrNil( byte: characteristic.value![3])
-      let motor = temperatureIntOrNil( byte: characteristic.value![4])
-      var batteries: [[Int8?]] = [[nil,nil], [nil,nil], [nil,nil]]
+      case CBUUIDs.BLEMjoulnirCharacteristic_Temperatures_UUID:
+        let vesc_mos = temperatureIntOrNil( byte: characteristic.value![0] )
+        let vesc_mos_1 = temperatureIntOrNil( byte: characteristic.value![1])
+        let vesc_mos_2 = temperatureIntOrNil( byte: characteristic.value![2])
+        let vesc_mos_3 = temperatureIntOrNil( byte: characteristic.value![3])
+        let motor = temperatureIntOrNil( byte: characteristic.value![4])
+        var batteries: [[Int8?]] = [[nil,nil], [nil,nil], [nil,nil]]
 
-      for module in 0...2
-      {
-        for sensor in 0...1
+        for module in 0...2
         {
-          batteries[module][sensor] = temperatureIntOrNil( byte: characteristic.value![5 + module * 2 + sensor])
+          for sensor in 0...1
+          {
+            batteries[module][sensor] = temperatureIntOrNil( byte: characteristic.value![5 + module * 2 + sensor])
+          }
         }
-      }
 
-      let pi = temperatureIntOrNil( byte: characteristic.value![11])
+        let pi = temperatureIntOrNil( byte: characteristic.value![11])
 
-      // print( "BLE: vesc_mos temperature is \(vesc_mos)" )
+        // print( "BLE: vesc_mos temperature is \(vesc_mos)" )
 
-      self.temperatures = Temperatures(vesc_mos: vesc_mos, vesc_mos_1: vesc_mos_1, vesc_mos_2: vesc_mos_2,
-                                       vesc_mos_3: vesc_mos_3, motor: motor, battery: batteries, pi: pi )
-      break
+        self.temperatures = Temperatures(vesc_mos: vesc_mos, vesc_mos_1: vesc_mos_1, vesc_mos_2: vesc_mos_2,
+                                         vesc_mos_3: vesc_mos_3, motor: motor, battery: batteries, pi: pi )
+        break
 
       case CBUUIDs.BLEMjoulnirCharacteristic_Power_UUID:
         // TODO: make resilient to fewer bytes
@@ -366,16 +391,47 @@ extension Model: CBPeripheralDelegate {
         let current_chunk = characteristic.value!.subdata(in:2..<4)
         let wh_consumed_chunk = characteristic.value!.subdata(in:4..<6)
         let motor_rpm_chunk = characteristic.value!.subdata(in:6..<8)
-        let duty_chunk = characteristic.value!.subdata(in:8..<9)
+        let duty_chunk = characteristic.value![8] // .subdata(in:8..<9)
 
         let current : Int16 = current_chunk.toInteger(endian: .little)
         let energy_wh : Int16 = wh_consumed_chunk.toInteger(endian: .little)
         let motor_rpm :Int16 = motor_rpm_chunk.toInteger(endian: .little)
-        let duty : Int8 = duty_chunk.toInteger(endian: .little)
+        var duty : Int8
+
+        if( duty_chunk < 128 )
+        {
+          duty = Int8(duty_chunk)
+        }
+        else
+        {
+          duty = Int8( Int16(duty_chunk) - 256 )
+        }/* .toInteger(endian: .little) */
 
         self.power = Power(power: Int(power), battery_current: Double(current) / 100.0, energy_Wh: Int(energy_wh), duty_cycle: Int(duty), motor_rpm: Int(motor_rpm) )
         break
 
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerState_UUID:
+        // TODO: make resilient to fewer bytes
+        // if
+        let state_chunk = characteristic.value![0]
+        let error_chunk = characteristic.value![1]
+        let outputVoltage_chunk = characteristic.value!.subdata(in:2..<4)
+        let outputCurrent_chunk = characteristic.value!.subdata(in:4..<5)
+        let ackCharge_chunk = characteristic.value!.subdata(in:6..<8)
+
+        let outputVoltageRaw: UInt16 = outputVoltage_chunk.toInteger( endian: .little )
+        let outputCurrentRaw: UInt16 = outputCurrent_chunk.toInteger( endian: .little )
+        let ackCharge: UInt16 = ackCharge_chunk.toInteger( endian: .little )
+
+        self.chargerState = ChargerState(detected: (state_chunk & 1) != 0,
+                                         powered: (state_chunk & 2) != 0,
+                                         charging: (state_chunk & 4) != 0,
+                                         errorBits: error_chunk,
+                                         outputVoltage: Double(outputVoltageRaw) / 256.0,
+                                         outputCurrent: Double(outputCurrentRaw) / 256.0,
+                                         ackChargeWh: Int(ackCharge))
+        break;
+        
       default:
         print( "Unrecognized characteristic UUID \(characteristic.uuid)" )
     }

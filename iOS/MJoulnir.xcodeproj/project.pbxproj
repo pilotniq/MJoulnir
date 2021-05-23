@@ -8,6 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		1D151E882621A073006F9FE1 /* PageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D151E872621A073006F9FE1 /* PageViewController.swift */; };
+		1D18814A264E77E800A062A2 /* ActiveViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D188149264E77E800A062A2 /* ActiveViewController.swift */; };
+		1D3E6D5A2659611A00346B0C /* ChargingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3E6D592659611A00346B0C /* ChargingViewController.swift */; };
+		1D3E6D5C2659612C00346B0C /* BalancingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3E6D5B2659612C00346B0C /* BalancingViewController.swift */; };
+		1D9EFFC42649971E003A52FE /* IdleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9EFFC32649971E003A52FE /* IdleViewController.swift */; };
+		1DB47C43264DD0B7001D9CC7 /* TabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB47C42264DD0B7001D9CC7 /* TabBarController.swift */; };
+		1DDCCA9A2649D8BB009414C9 /* ArmedViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DDCCA992649D8BB009414C9 /* ArmedViewController.swift */; };
 		1DE05C9F26165C3700BAEBEA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE05C9E26165C3700BAEBEA /* AppDelegate.swift */; };
 		1DE05CA126165C3700BAEBEA /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE05CA026165C3700BAEBEA /* SceneDelegate.swift */; };
 		1DE05CA326165C3700BAEBEA /* ScanningViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE05CA226165C3700BAEBEA /* ScanningViewController.swift */; };
@@ -23,6 +29,12 @@
 
 /* Begin PBXFileReference section */
 		1D151E872621A073006F9FE1 /* PageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageViewController.swift; sourceTree = "<group>"; };
+		1D188149264E77E800A062A2 /* ActiveViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveViewController.swift; sourceTree = "<group>"; };
+		1D3E6D592659611A00346B0C /* ChargingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChargingViewController.swift; sourceTree = "<group>"; };
+		1D3E6D5B2659612C00346B0C /* BalancingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalancingViewController.swift; sourceTree = "<group>"; };
+		1D9EFFC32649971E003A52FE /* IdleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdleViewController.swift; sourceTree = "<group>"; };
+		1DB47C42264DD0B7001D9CC7 /* TabBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarController.swift; sourceTree = "<group>"; };
+		1DDCCA992649D8BB009414C9 /* ArmedViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedViewController.swift; sourceTree = "<group>"; };
 		1DE05C9B26165C3700BAEBEA /* MJoulnir.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MJoulnir.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DE05C9E26165C3700BAEBEA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1DE05CA026165C3700BAEBEA /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -75,6 +87,12 @@
 				1DE05CA226165C3700BAEBEA /* ScanningViewController.swift */,
 				1DF1F42E26277DE400AB31C6 /* Model.swift */,
 				1DE05CA426165C3700BAEBEA /* Main.storyboard */,
+				1D3E6D592659611A00346B0C /* ChargingViewController.swift */,
+				1D3E6D5B2659612C00346B0C /* BalancingViewController.swift */,
+				1D188149264E77E800A062A2 /* ActiveViewController.swift */,
+				1DB47C42264DD0B7001D9CC7 /* TabBarController.swift */,
+				1DDCCA992649D8BB009414C9 /* ArmedViewController.swift */,
+				1D9EFFC32649971E003A52FE /* IdleViewController.swift */,
 				1DF1F4322627953D00AB31C6 /* MainStatusViewController.swift */,
 				1DEF3BA6262E2C77001EB01B /* TemperaturesViewController.swift */,
 				1DE05CA726165C3900BAEBEA /* Assets.xcassets */,
@@ -167,9 +185,15 @@
 			files = (
 				1DF1F4332627953D00AB31C6 /* MainStatusViewController.swift in Sources */,
 				1DE05CA326165C3700BAEBEA /* ScanningViewController.swift in Sources */,
+				1D3E6D5C2659612C00346B0C /* BalancingViewController.swift in Sources */,
+				1DB47C43264DD0B7001D9CC7 /* TabBarController.swift in Sources */,
+				1DDCCA9A2649D8BB009414C9 /* ArmedViewController.swift in Sources */,
+				1D3E6D5A2659611A00346B0C /* ChargingViewController.swift in Sources */,
+				1D9EFFC42649971E003A52FE /* IdleViewController.swift in Sources */,
 				1D151E882621A073006F9FE1 /* PageViewController.swift in Sources */,
 				1DE05C9F26165C3700BAEBEA /* AppDelegate.swift in Sources */,
 				1DF1F42F26277DE400AB31C6 /* Model.swift in Sources */,
+				1D18814A264E77E800A062A2 /* ActiveViewController.swift in Sources */,
 				1DE05CA126165C3700BAEBEA /* SceneDelegate.swift in Sources */,
 				1DEF3BA7262E2C78001EB01B /* TemperaturesViewController.swift in Sources */,
 				1DE05CB6261F1A5200BAEBEA /* CBUUIDs.swift in Sources */,
@@ -320,7 +344,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = M6P6QSZ9AR;
-				INFOPLIST_FILE = solo/Info.plist;
+				INFOPLIST_FILE = "$(SRCROOT)/MJoulnir/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -338,7 +362,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = M6P6QSZ9AR;
-				INFOPLIST_FILE = solo/Info.plist;
+				INFOPLIST_FILE = "$(SRCROOT)/MJoulnir/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
