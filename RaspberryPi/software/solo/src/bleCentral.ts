@@ -15,6 +15,7 @@ const UUID_CHARACTERISTIC_STATE = '71498776a04c4800a1d925ebc70b0002';
 const UUID_CHARACTERISTIC_BATTERY_IMBALANCE = '71498776a04c4800a1d925ebc70b0003';
 const UUID_CHARACTERISTIC_TEMPERATURES = '71498776a04c4800a1d925ebc70b0004';
 const UUID_CHARACTERISTIC_POWER = '71498776a04c4800a1d925ebc70b0005';
+const UUID_CHARACTERISTIC_CHARGER = '71498776a04c4800a1d925ebc70b0006';
 
 let blenoOn = false;
 let started = false;
@@ -54,7 +55,7 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 	}
 
 	onSubscribe( maxValueSize: number, updateValueCallback: (data: Buffer) => void) {
-		console.log( "onSubscribe!" );
+		console.log( "onSubscribe " + this.name );
 		this.updateValueCallback = updateValueCallback;
 		this.maxValueSize = maxValueSize;
 	}
@@ -374,6 +375,46 @@ class PowerCharacteristic extends BoatModelCharacteristic
 	}
 }
 
+class ChargerStateCharacteristic extends BoatModelCharacteristic
+{
+	constructor(model: BoatModel.BoatModel) {
+		super( model, model.charger, UUID_CHARACTERISTIC_CHARGER, "Charger State" );
+  
+		this.buildValue();
+	}
+	
+	// value:
+	// detected (1)
+	// powered  (2)
+	// charging (4) byte)
+	// error bits (byte)
+	// outputVoltage (2 bytes, * 256)
+	// outputCurrent (2 bytes * 256)
+	// ack charge Wh (2 bytes)
+	buildValue()
+	{
+		const charger = this.model.charger;
+		const scaledOutputVoltage = Math.round(charger.output_voltage * 256)
+		const scaledOutputCurrent = Math.round(charger.output_current * 256)
+		const charge_wh = Math.round(charger.total_charge_J / 3600)
+
+		this.value = Buffer.alloc(8);
+
+		this.value[0] = (charger.detected ? 1 : 0) + 
+			(charger.powered ? 2 : 0) +
+			(charger.do_charge ? 4 : 0)
+		this.value[1] = charger.errorBits
+		this.value[2] = scaledOutputVoltage & 0xff
+		this.value[3] = scaledOutputVoltage >> 8
+		this.value[4] = scaledOutputCurrent & 0xff
+		this.value[5] = scaledOutputCurrent >> 8
+		this.value[6] = charge_wh & 0xff
+		this.value[7] = charge_wh >> 8
+
+		console.log( "ChargerStateCharacteristic.buildValue called")
+	}
+}
+
 class ElectricDrivetrainService extends Bleno.PrimaryService {
 	constructor( model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine)
 	{
@@ -384,7 +425,8 @@ class ElectricDrivetrainService extends Bleno.PrimaryService {
 				new StateCharacteristic(model, stateMachine),
 				new BatteryBalanceCharacteristic(model),
 				new TemperaturesCharacteristic(model),
-		new PowerCharacteristic(model)
+				new PowerCharacteristic(model),
+				new ChargerStateCharacteristic(model)
       	      ]
   	  });
 	}

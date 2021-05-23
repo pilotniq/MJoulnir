@@ -2,7 +2,9 @@ import rfdc from "rfdc";
 import * as BoatModel from "./boatModel"
 import * as VESCble from 'vesc-ble'
 import * as VESC from './vesc';
-import * as Charger from './charger';
+// import * as Charger from './elconCharger';
+// import { Charger } from './chargerInterface'
+
 import { timeStamp } from "node:console";
 
 const clone = rfdc();
@@ -250,7 +252,7 @@ class TurnOnContactorState extends MJoulnirState
 					// this.stateMachine.vesc = new VESC.VESCtalker( this.stateMachine.model );
 					vesc.connect()
 					// this.stateMachine.vesc.connect()
-					this.stateMachine.charger = new Charger.Charger( vesc.vescTalker, this.stateMachine.model );
+					// this.stateMachine.charger = new Charger.ELCONCharger( vesc.vescTalker, this.stateMachine.model );
 					// wait 1 second
 					return sleep( 0.5 );
 				})
@@ -501,7 +503,7 @@ class ChargeState extends MJoulnirState
 	is_paused = false
 	pauseTimer?: NodeJS.Timer
 
-	charger?: Charger.Charger
+	charger: BoatModel.ChargerState
 
 	resistances_estimated = false
 	current_limiting = false;
@@ -527,6 +529,7 @@ class ChargeState extends MJoulnirState
 		super( BoatModel.State.Charging, machine, "Charge");
 
 		this.model = machine.model;
+		this.charger = this.model.charger
 		this.battery = machine.model.battery;
 		this.max_wall_current = 0;
 
@@ -557,7 +560,7 @@ class ChargeState extends MJoulnirState
 	{
 		super.enter();
 
-		this.charger = this.stateMachine.charger
+		this.charger = this.model.charger
 
 		// this.battery_updates_after_maxCurrent = 0;
 		this.stateMachine.model.charger.onChanged( this.boundChargerListener );
@@ -579,7 +582,7 @@ class ChargeState extends MJoulnirState
 		// TODO: monitor power switch
 		// TODO: disable VESC? monitor VESC for going to active state
 
-		this.idle_cell_voltages = clone(this.model.battery!.voltages)
+		this.idle_cell_voltages = clone(this.model.battery.voltages)
 
 		// update battery state every second
 		this.battery.setPollingInterval( 1 );
@@ -607,7 +610,7 @@ class ChargeState extends MJoulnirState
 
 		this.is_paused = true
 
-		this.charger!.setChargingParameters( this.target_pack_voltage, this.charging_current, false );
+		this.charger.setChargingParameters( this.target_pack_voltage, this.charging_current, false );
 
 		console.log( "pauseCharging: starting pause timer for resume @ " + (new Date).toISOString() )
 		this.pauseTimer = setTimeout( this.resumeCharging.bind(this), ChargeState.PAUSE_PERIOD_DURATION * 1000 )
@@ -628,7 +631,7 @@ class ChargeState extends MJoulnirState
 			this.resistances_estimated = true
 		}
 
-		this.charger!.setChargingParameters( this.target_pack_voltage, this.charging_current, true );
+		this.charger.setChargingParameters( this.target_pack_voltage, this.charging_current, true );
 
 		this.resume_time = Date.now() / 1000.0
 
@@ -645,7 +648,7 @@ class ChargeState extends MJoulnirState
 
 		console.log( "Turning off charger" );
 
-		this.charger!.setChargingParameters( 0, 0, false );
+		this.charger.setChargingParameters( 0, 0, false );
 
 		this.battery.setPollingInterval( BoatModel.Battery.DEFAULT_POLLING_INTERVAL );
 
@@ -935,7 +938,7 @@ class BalancingState extends MJoulnirState
 	readonly boundChargerListener: () => void;
 	// readonly boundStartBalancing: () => void;
 
-	charger?: Charger.Charger
+	charger: BoatModel.ChargerState
 
 	// initialWaitTimeout?: NodeJS.Timer;
 	is_balancing = false;
@@ -951,6 +954,7 @@ class BalancingState extends MJoulnirState
 		super( BoatModel.State.Balancing, machine, "Balancing");
 
 		this.model = machine.model;
+		this.charger = this.model.charger
 		this.battery = machine.model.battery;
 
 		this.boundBatteryListener = this.batteryChanged.bind( this );
@@ -969,10 +973,8 @@ class BalancingState extends MJoulnirState
 	{
 		super.enter();
 
-		this.charger = this.stateMachine.charger
-
 		this.battery.onChanged( this.boundBatteryListener );
-		this.model.charger.onChanged( this.boundChargerListener );
+		this.charger.onChanged( this.boundChargerListener );
 
 		// we don't need a high update interval, we poll the battery when required
 		// this.stateMachine.batteryReader.setInterval( 60 );
@@ -1219,7 +1221,7 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 	state: MJoulnirState;
 
 	// vesc?: VESC.VESCtalker;
-	charger?: Charger.Charger;
+	// charger?: Charger.ELCONCharger;
 	// readonly batteryReader: BatteryReader.BatteryReader;
 
 	readonly model: BoatModel.BoatModel;

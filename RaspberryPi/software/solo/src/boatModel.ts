@@ -9,6 +9,7 @@ import * as BatteryReader from './batteryReader';
 // import { Packet } from 'vesc-ble';
 import { FileHandle } from 'fs/promises';
 import { LowLevelHardware } from './lowLevelHardware';
+import { Charger, ChargerError } from './chargerInterface'
 
 // import { Hardware } from './hardware';
 
@@ -60,53 +61,81 @@ export class ChargerState extends BoatModelAttribute
 {
 	public static readonly efficiency = 0.9;
 
+	public charger: Charger;
+
 	public detected = false;
-	public output_voltage?: number;
-	public output_current?: number;
-	public hardware_good?: boolean;
-	public temperature_good?: boolean;
-	public input_voltage_good?: boolean;
-	public battery_detect_good?: boolean;
-	public communication_good?: boolean;
+	public powered = false;
+	public output_voltage = 0;
+	public output_current = 0;
+
+	// bitmask of ChargerError
+	public errorBits: number
 
 	public max_voltage?: number;
 	public max_current?: number;
 	public do_charge?: boolean;
 	public total_charge_J = 0;
 
+	constructor(model: BoatModel, charger: Charger )
+	{
+		super(model);
+
+		this.charger = charger
+		this.errorBits = 0
+
+		charger.on( 'changed', this.update.bind(this) )
+	}
+
+	// charger changed
+	private update(): void
+/*
 	update1( output_voltage: number, output_current: number, 
 		hardware_good: boolean, 
 		temperature_good: boolean, 
 		input_voltage_good: boolean,
 		battery_detect_good: boolean, 
 		communication_good: boolean, add_charge_J: number ): void
+		*/
 	{
 		let changed = false;
 
-		if( !this.detected )
+		console.log( "BoatModel.ChargerState: update called");
+
+		if( this.charger.detected != this.detected )
 		{
-			this.detected = true;
+			this.detected = this.charger.detected;
+			changed = true;
+		}
+		if( this.charger.powered != this.powered )
+		{
+			this.powered = this.charger.powered;
+			changed = true;
+		}
+		
+		if( this.charger.acc_charge_J != this.total_charge_J )
+		{
+			this.total_charge_J = this.charger.acc_charge_J;
 			changed = true;
 		}
 
-		if( add_charge_J != 0 )
+		if( this.charger.output_voltage != this.output_voltage )
 		{
-			this.total_charge_J += add_charge_J;
+			this.output_voltage = this.charger.output_voltage;
 			changed = true;
 		}
 
-		if( output_voltage != this.output_voltage )
+		if( this.charger.output_current != this.output_current )
 		{
-			this.output_voltage = output_voltage;
+			this.output_current = this.charger.output_current;
 			changed = true;
 		}
 
-		if( output_current != this.output_current )
+		if( this.charger.errorBits != this.errorBits )
 		{
-			this.output_current = output_current;
+			this.errorBits = this.charger.errorBits;
 			changed = true;
 		}
-
+/*
 		if( hardware_good != this.hardware_good )
 		{
 			this.hardware_good = hardware_good;
@@ -136,14 +165,19 @@ export class ChargerState extends BoatModelAttribute
 			this.communication_good = communication_good;
 			changed = true;
 		}
-
+*/
 		if( changed )
+		{
 			this.signalUpdated();
+			console.log( "BoatModel.ChargerState: calling signalUpdated");
+		} else {
+			console.log( "BoatModel.ChargerState: not changed");
+		}
 
 		this.model.battery.updateEstimatedCurrent()
 	}
-
-	public updateCharging( max_voltage: number, max_current: number, do_charge: boolean )
+/*
+	public updateCharging( max_voltage: number, max_current: number, do_charge: boolean ): void
 	{
 		let changed = false;
 	
@@ -185,12 +219,13 @@ export class ChargerState extends BoatModelAttribute
 
 		this.signalUpdated();
 	}
-
+*/
 	canCharge(): boolean
 	{
-		const result = this.detected && this.hardware_good! && this.temperature_good! && 
-			this.input_voltage_good! && this.battery_detect_good! && 
-			this.communication_good!;
+		const result = this.detected && this.powered && (this.errorBits == 0)
+		//this.hardware_good! && this.temperature_good! && 
+		//	this.input_voltage_good! && this.battery_detect_good! && 
+		//	this.communication_good!;
 
 		// console.log( this.toString() )
 		/*
@@ -205,10 +240,10 @@ export class ChargerState extends BoatModelAttribute
 
 	currentChargingPower(): number
 	{
-		if( !this.detected )
+		if( !this.detected || !this.powered)
 			return 0;
 		else
-			return this.output_voltage! * this.output_current!;
+			return this.output_voltage * this.output_current;
 	}
 
 	estimateCurrent(): number
@@ -219,6 +254,12 @@ export class ChargerState extends BoatModelAttribute
 			return this.output_current
 	}
 
+	setChargingParameters(max_voltage: number, max_current: number, 
+		doCharge: boolean): void
+	{
+		this.charger.setChargingParameters( max_voltage, max_current, doCharge )
+	}
+	
 	toString(): string
 	{
 		let result: string;
@@ -226,14 +267,14 @@ export class ChargerState extends BoatModelAttribute
 		if( !this.detected )
 			return "not detected";
 
-		const power = this.output_voltage! * this.output_current!;
+		const power = this.output_voltage * this.output_current;
 
-		result = "output power: " + power.toFixed(0) + " W (" + this.output_voltage!.toFixed(1) + 
-			" V, " + this.output_current!.toFixed(1) + " A)";
+		result = "output power: " + power.toFixed(0) + " W (" + this.output_voltage.toFixed(1) + 
+			" V, " + this.output_current.toFixed(1) + " A)";
 		if( this.max_voltage )
-			result += ", max voltage: " + this.max_voltage!.toFixed(1) + " V"
+			result += ", max voltage: " + this.max_voltage.toFixed(1) + " V"
 		if( this.max_current )
-            result += ", max current: " + this.max_current!.toFixed(1) + " A"
+            result += ", max current: " + this.max_current.toFixed(1) + " A"
 
 		if( !(this.total_charge_J === undefined) )
 			result += ", total charge=" + (this.total_charge_J / 1000).toFixed(0) + " kJ = " + 
@@ -241,21 +282,17 @@ export class ChargerState extends BoatModelAttribute
 		if( !(this.do_charge === undefined) )
 			result += ", charge: " + this.do_charge
 
-		if( !this.hardware_good )
+		if( this.errorBits & ChargerError.Hardware )
 			result += ", hardware fault";
 
-		if( !this.temperature_good )
+		if( this.errorBits & ChargerError.OverTemperature )
 			result += ", over temperature";
 
-		if( !this.input_voltage_good )
-			result += ", input voltage bad";
-
-		if( !this.battery_detect_good )
+		if( this.errorBits & ChargerError.Battery )
 			result += ", battery not detected";
 
-		if( !this.communication_good )
+		if( this.errorBits & ChargerError.Communication )
 			result += ", communication timeout";
-
 		
 		return result;
 	}
@@ -977,17 +1014,18 @@ export class HardwareState extends BoatModelAttribute
 export class BoatModel extends Model.Model
 {
 	state = new MJoulnirState(this, State.Idle)
-	charger = new ChargerState(this)
+	charger
 	hardware
 	battery
 	vescState
 
-	constructor( batteryReader: BatteryReader.BatteryReader, bleVESC: VESCble.VESCinterface,
-		hardware: LowLevelHardware )
+	constructor( batteryReader: BatteryReader.BatteryReader, vescTalker: VESCreader.VESCtalker,
+		hardware: LowLevelHardware, charger: Charger )
 	{
 		super()
 		this.battery = new Battery( this, batteryReader )
-		this.vescState = new VESC( this, new VESCreader.VESCtalker(bleVESC) )
+		this.charger = new ChargerState(this, charger)
+		this.vescState = new VESC( this, vescTalker )
 		this.hardware = new HardwareState( this, hardware )
 	}
 

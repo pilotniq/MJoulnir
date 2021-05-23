@@ -2,7 +2,7 @@ import * as BoatModel from "./boatModel"
 import * as BLECentral from './bleCentral';
 import * as StateMachine from './stateMachine';
 import * as Simulation from  "./simulation";
-	
+
 async function delay(seconds: number)
 {
 	return new Promise<void>( resolve => setTimeout( resolve, seconds * 1000 ) );
@@ -15,7 +15,7 @@ const simulatedBoat = new Simulation.SimulatedBoat()
 // const lowlevelHardware = new Simulation.SimulatedHardware()
 
 const boatModel = new BoatModel.BoatModel( simulatedBoat.batteryReader, 
-	simulatedBoat.vesc, simulatedBoat )
+	simulatedBoat.vescTalker, simulatedBoat, simulatedBoat.charger )
 
 boatModel.battery.onChanged( () => {
 	console.log( "Battery: SOC=" + (boatModel.battery.soc_from_min_voltage() * 100).toFixed(0) + "%, " + 
