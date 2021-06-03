@@ -1,6 +1,8 @@
 import * as Model from "./model"
 import * as BoatModel from "./boatModel"
-import * as Bleno from '@abandonware/bleno'
+// import * as Bleno from '@abandonware/bleno'
+const Bleno = require("@abandonware/bleno")
+
 import { ElectricDrivetrainStateMachine } from "./stateMachine"
 
 const UUID_DESCRIPTOR_CCCD = '2904'
@@ -19,7 +21,6 @@ const UUID_CHARACTERISTIC_CHARGER = '71498776a04c4800a1d925ebc70b0006';
 
 let blenoOn = false;
 let started = false;
-
 
 abstract class BoatModelCharacteristic extends Bleno.Characteristic
 {
@@ -457,7 +458,7 @@ export function start( model: BoatModel.BoatModel, stateMachine: ElectricDrivetr
   // DOing bleno.on inits HCI stack which may fail if BT is not initialized.
   // moved into start function to be able to delay startup
   //
-  Bleno.bleno.on('stateChange', function(state) {
+  Bleno.on('stateChange', function(state: string) {
     if (state === 'poweredOn') {
 	blenoOn = true;
 	if( started )
@@ -467,18 +468,18 @@ export function start( model: BoatModel.BoatModel, stateMachine: ElectricDrivetr
     {
       console.log( "bleno stateChage => " + state );
 
-      Bleno.bleno.stopAdvertising();
+      Bleno.stopAdvertising();
     }
   });
 
-  Bleno.bleno.on('advertisingStart', function(err) {
+  Bleno.on('advertisingStart', function(err: string) {
     if (!err) {
       console.log('advertising...');
       //
       // Once we are advertising, it's time to set up our services,
       // along with our characteristics.
       //
-      Bleno.bleno.setServices([electricDrivetrainService!, batteryService!]);
+      Bleno.setServices([electricDrivetrainService!, batteryService!]);
     }
   });
 
@@ -491,7 +492,7 @@ export function start( model: BoatModel.BoatModel, stateMachine: ElectricDrivetr
 
 export function stop(): void
 {
-	Bleno.bleno.stopAdvertising()
+	Bleno.stopAdvertising()
 }
 
 export let isAdvertising = false;
@@ -503,7 +504,7 @@ function startAdvertising()
     // so it's easier to find.
     //
 
-    Bleno.bleno.startAdvertising("Solo", [electricDrivetrainService!.uuid, batteryService!.uuid], function(err) {
+    Bleno.startAdvertising("Solo", [electricDrivetrainService!.uuid, batteryService!.uuid], function(err: string) {
       if (err) {
         console.log("Bleno advertising error: " + err);
       }
