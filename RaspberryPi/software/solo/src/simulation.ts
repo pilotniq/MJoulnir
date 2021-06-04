@@ -3,6 +3,7 @@ import { LoopDetected } from 'http-errors';
 
 import Koa, { Middleware } from 'koa'
 import serve = require('koa-static')
+import bodyParser = require('koa-bodyparser');
 import Router from 'koa-router'
 
 import rfdc from "rfdc";
@@ -45,6 +46,7 @@ export class SimulatedBoat implements LowLevelHardware
         this.charger = new SimulatedCharger(this.batteryReader)
 
         this.app = new Koa();
+        this.app.use(bodyParser())
         this.router = new Router();
         /*
         this.helloWorldController = async (ctx) => {
@@ -76,15 +78,15 @@ export class SimulatedBoat implements LowLevelHardware
             console.log( "Query" + JSON.stringify(ctx.request.query));
             console.log( "href: " + JSON.stringify(ctx.request.href));
             console.log( "type: " + ctx.request.type );
-            // console.log( "body: " + ctx.req.body );
+            console.log( "body: " + JSON.stringify(ctx.request.body) );
             
             const query = ctx.request.query
-            const detected = query['detected']
+            const detected = ctx.request.body.detected
 
-            if(typeof detected ==="string")
-            {
+            if(typeof detected ==="boolean")
+                this.charger.setDetected( detected )
+            else if(typeof detected ==="string")
                 this.charger.setDetected( Boolean(JSON.parse(detected)) )
-            }
             else
                 console.log( "typeof detected is " + (typeof detected))
 
@@ -94,17 +96,35 @@ export class SimulatedBoat implements LowLevelHardware
         }
         )
 
-        this.router.post( '/api/v1/charger/powered', async (ctx) => {
+        this.router.get( '/api/v1/charger/detected', async (ctx) => {
             console.log( "Received an API call to set charger detected" + ctx.request.path);
             console.log( "Query" + JSON.stringify(ctx.request.query));
             console.log( "href: " + JSON.stringify(ctx.request.href));
             console.log( "type: " + ctx.request.type );
             // console.log( "body: " + ctx.req.body );
             
-            const query = ctx.request.query
-            const powered = query['powered']
+            ctx.body =  {
+                message: this.charger.detected
+            }
+        }
+        )        
 
-            if(typeof powered ==="string")
+        this.router.post( '/api/v1/charger/powered', async (ctx) => {
+            console.log( "Received an API call to set charger powered" + ctx.request.path);
+            console.log( "Query" + JSON.stringify(ctx.request.query));
+            console.log( "href: " + JSON.stringify(ctx.request.href));
+            console.log( "type: " + ctx.request.type );
+            console.log( "body: " + JSON.stringify(ctx.request.body) );
+
+            // console.log( "body: " + ctx.request );
+            
+            const query = ctx.request.query
+            // const powered = query['powered']
+            const powered = ctx.request.body.powered
+
+            if(typeof powered ==="boolean")
+                this.charger.setPowered( powered )
+            else if(typeof powered ==="string")
             {
                 this.charger.setPowered( Boolean(JSON.parse(powered)) )
             }
@@ -116,9 +136,21 @@ export class SimulatedBoat implements LowLevelHardware
             }
         }
         )
+
+        this.router.get( '/api/v1/charger/powered', async (ctx) => {
+            console.log( "Received an API call to set charger detected" + ctx.request.path);
+            console.log( "Query" + JSON.stringify(ctx.request.query));
+            console.log( "href: " + JSON.stringify(ctx.request.href));
+            console.log( "type: " + ctx.request.type );
+            
+            ctx.body =  {
+                message: this.charger.powered
+            }
+        }
+        )      
         this.app.use( this.router.routes())
             .use( this.router.allowedMethods())
-        this.app.use( serve("/home/pi/src/electric-boat/RaspberryPi/software/solo/web-static"))
+        this.app.use( serve("/home/pi/src/MJoulnir/RaspberryPi/software/solo/web-static"))
 
         this.app.listen( this.PORT, () => { console.log( "Server on port " + this.PORT)})
     }

@@ -379,11 +379,28 @@ class ArmedState extends MJoulnirState
 
 	requestTransition( nextState: MJoulnirState ): boolean
 	{
+		console.log( "ArmedState: got transition request to " + nextState.name )
 		switch( nextState )
 		{
 			case this.stateMachine.idleState:
 				this.transitionTo( nextState )
 				return true;
+
+			case this.stateMachine.chargeState:
+				console.log( "ArmedState: detected=" + this.model.charger.detected + ", powered=" + this.model.charger.powered )
+
+				if(this.model.charger.detected && this.model.charger.powered)
+				{
+					console.log( "Transitioning!" )
+					this.transitionTo( nextState )
+					return true;
+				}
+				else
+				{
+					console.log( "Not Transitioning." )
+					return false
+				}
+				break
 
 			default:
 				return false;
@@ -1271,6 +1288,8 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 	{
 		let state: MJoulnirState
 
+		console.log( "ElectricDrivetrainStateMachine.requestTransition(" + modelState.toString() + ")")
+
 		switch( modelState )
 		{
 			case BoatModel.State.Idle:
@@ -1299,6 +1318,7 @@ export class ElectricDrivetrainStateMachine extends StateMachine
 				return false;
 		}
 
+		console.log( "ElectricDrivetrainStateMachine.requestTransition: Calling canEnter on " + state.name)
 		if( !state.canEnter() )
 		{
 			console.log( "Can't enter state " + state.name );

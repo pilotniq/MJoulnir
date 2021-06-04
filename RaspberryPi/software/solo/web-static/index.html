@@ -1,0 +1,51 @@
+<html>
+    <head>
+        <title>MJoulnir Simulator</title>
+        <script type="text/javascript">
+            document.addEventListener("DOMContentLoaded", loadFunc, true)
+
+            function loadFunc(doc, event )
+            {
+                charger_detected = document.getElementById("charger_detected")
+                charger_powered = document.getElementById("charger_powered")
+
+                // read state from backend and set UI elements
+                fetch("http:/api/v1/charger/detected")
+                    .then( response => response.json() )
+                    .then( data => charger_detected.checked = data.message )
+
+                fetch("http:/api/v1/charger/powered")
+                    .then( response => response.json() )
+                    .then( data => charger_powered.checked = data.message )
+
+                charger_detected.addEventListener("change", (event) => 
+                {
+                    fetch("http:/api/v1/charger/detected", 
+                        {'method': 'POST', 
+                         'headers': {'Accept': 'application/json',
+                            'Content-Type': 'application/json' }, 
+                         'body': JSON.stringify( { 'detected': event.currentTarget.checked } )
+                        })
+                })
+
+                charger_powered.addEventListener("change", (event) => 
+                {
+                    fetch("http:/api/v1/charger/powered", 
+                        {'method': 'POST', 
+                         'headers': {'Accept': 'application/json',
+                            'Content-Type': 'application/json' }, 
+                         'body': JSON.stringify( { 'powered': event.currentTarget.checked } )
+                        })
+                })
+            }
+        </script>
+    </head>
+    <body>
+        <h1>MJoulnir Simulator</h1>
+        <h2>Charger</h2>
+        <input type="checkbox" id="charger_detected" name="charger_detected">
+        <label for="charger_detected">Detected</label>
+        <input type="checkbox" id="charger_powered" name="charger_powered">
+        <label for="charger_powered">Powered</label>
+    </body>
+</html>
