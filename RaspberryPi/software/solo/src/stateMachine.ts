@@ -621,15 +621,24 @@ class ChargeState extends MJoulnirState
 
 	pauseCharging(): void
 	{
-		assert( !this.is_paused )
+		// TODO: THis assert has triggered
+		if( !this.is_paused )
+		{
+			assert( !this.is_paused )
 
-		console.log( (new Date().toISOString()) + ": Pausing charging" )
+			console.log( (new Date().toISOString()) + ": Pausing charging" )
 
-		this.is_paused = true
+			this.is_paused = true
 
-		this.charger.setChargingParameters( this.target_pack_voltage, this.charging_current, false );
+			this.charger.setChargingParameters( this.target_pack_voltage, this.charging_current, false );
 
-		console.log( "pauseCharging: starting pause timer for resume @ " + (new Date).toISOString() )
+			console.log( "pauseCharging: starting pause timer for resume @ " + (new Date).toISOString() )
+		}
+		else
+		{
+			console.log( "Restarting pause" );
+			clearTimeout( this.pauseTimer! );
+		}
 		this.pauseTimer = setTimeout( this.resumeCharging.bind(this), ChargeState.PAUSE_PERIOD_DURATION * 1000 )
 	}
 
@@ -730,7 +739,8 @@ class ChargeState extends MJoulnirState
 
 		const maxPowerIn = 230 * this.max_wall_current // Watts, 10 amps in regular outlet
 		const maxPowerOut = maxPowerIn * BoatModel.ChargerState.efficiency;
-		const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/ this.target_pack_voltage;
+		// const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/this.target_pack_voltage;
+		const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/this.charger.output_voltage;
 
 		console.log( "max_wall_current=" + this.max_wall_current + 
 			", maxPowerIn=" + maxPowerIn + 
@@ -776,6 +786,8 @@ class ChargeState extends MJoulnirState
 					return;
 				}
 			}
+			else
+				this.charging_current = maxChargingCurrent
 		}
 
 		if( this.current_limiting )
@@ -926,6 +938,12 @@ class ChargeState extends MJoulnirState
 		{
 			if( this.temperature_derating < 0.8 )
 				this.temperature_derating += 0.1;
+
+			if( newTemperature < 31 && this.temperature_derating > 0.05 )
+			    this.temperature_derating = 0.05;
+
+			if( newTemperature < 32 && this.temperature_derating > 0.2 )
+			    this.temperature_derating = 0.2;
 		}
 		else if( this.temperature_derating > 0.01 && 
                  newTemperature < 30 && 
@@ -935,7 +953,8 @@ class ChargeState extends MJoulnirState
 		}
 
 		if( this.temperature_derating > 0.01 )
-			console.log( "temperature derating: " + (this.temperature_derating * 100).toFixed(0) + "%")
+			console.log( "temperature derating (temp=" + newTemperature.toFixed(1) + " C, change=" + this.temperature_change.toFixed(2) + ": " +
+				     (this.temperature_derating * 100).toFixed(0) + "%")
 
 		this.recalculateCharging();
 	}

@@ -1,0 +1,17 @@
+[Unit]
+Description=Electric Drivetrain
+After=bluetooth.target
+
+[Service]
+Environment=NOBLE_HCI_DEVICE_ID=0
+Environment=BLENO_HCI_DEVICE_ID=1
+ExecStart=/usr/bin/node dist/app.js
+WorkingDirectory=/home/pi/src/MJoulnir/RaspberryPi/software/solo
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+

@@ -174,7 +174,7 @@ export class ChargerState extends BoatModelAttribute
 			console.log( "BoatModel.ChargerState: not changed");
 		}
 
-		this.model.battery.updateEstimatedCurrent()
+		this.model.battery.updateEstimatedCurrent();
 	}
 /*
 	public updateCharging( max_voltage: number, max_current: number, do_charge: boolean ): void
@@ -228,13 +228,10 @@ export class ChargerState extends BoatModelAttribute
 		//	this.communication_good!;
 
 		// console.log( this.toString() )
-		/*
-		console.log( this.detected + ", hw:"  + this.hardware_good! + ", t:"  + 
-			this.temperature_good! + ", iv:"  +  
-			this.input_voltage_good! + ", bd:"  + this.battery_detect_good! + ", cg:"  + 
-			this.communication_good!)
+		
+		console.log( this.detected + ", e:" + this.errorBits!)
 		console.log( "canCharge=" + result )
-		*/
+		
 		return result
 	}
 

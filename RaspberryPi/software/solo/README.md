@@ -1,11 +1,11 @@
 Installation
 
-copy solo.service to /etc/systemd/system
+copy mjoulnir.service to /etc/systemd/system
 
 Do 
-sudo systemctl start solo.service
-sudo systemctl stop solo.service
-sudo systemctl enable myscript.service
+sudo systemctl start mjoulnir
+sudo systemctl stop mjoulnir
+sudo systemctl enable mjoulnir.service
 
 sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 

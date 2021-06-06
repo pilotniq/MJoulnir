@@ -62,13 +62,18 @@ export class ELCONCharger extends events.EventEmitter implements Charger
 		{
 			// const charger_model = this.model.charger;
 
+			console.log( Date.now() + ": elconCharger.ts: got CAN packet (from charger)" );
+			
 			if( this.detected )
 				clearTimeout( this.recvTimeout! );
 
 			this.output_voltage = ((packet.data[0] << 8) | packet.data[1]) / 10;
 			this.output_current = ((packet.data[2] << 8) | packet.data[3]) / 10;
-            const status = packet.data[4];
+			
+            		const status = packet.data[4];
 			this.errorBits = status;
+
+			console.log( "elconCharger.ts: errorBits=" + status );
 
 			const hardware_good = (status & 1) == 0;
 			const temperature_good = (status & 2) == 0;
@@ -88,26 +93,29 @@ export class ELCONCharger extends events.EventEmitter implements Charger
 			this.last_update_time = now;
 
 			const average_power = (power_W + this.last_power_W)
-            this.last_power_W = power_W
+            		this.last_power_W = power_W
 			const delta_J = average_power * dt;
+			this.acc_charge_J += delta_J
 /*
 			charger_model.update1( output_voltage, output_current, hardware_good, temperature_good,
 				input_voltage_good, battery_detect_good, communication_good, delta_J );
 */
 			// start timer for detecting loss off communication
 			// if no packet received in 2.5 seconds (should come every second), consider charger down
-			this.recvTimeout = setTimeout( this.recvTimeoutFunc.bind(this), 2500 );
-/*
+			// this.recvTimeout = setTimeout( this.recvTimeoutFunc.bind(this), 2500 );
+			// increased timeout to 5.5 seconds
+			this.recvTimeout = setTimeout( this.recvTimeoutFunc.bind(this), 5500 );
+
 			if( !this.detected )
 			{
 				console.log( "Charger detected!" );
 				// start timer for sending voltage/current
-				this.sendMaxCharging(); // setInterval( this.sendValues.bind(this), 1000 );
+				this.sendCharging(); // setInterval( this.sendValues.bind(this), 1000 );
 			}
-            */
+
 			this.detected = true;
 
-            this.emit('changed');
+            		this.emit('changed');
 		}
 	}
 
@@ -117,10 +125,10 @@ export class ELCONCharger extends events.EventEmitter implements Charger
 		this.last_update_time = undefined;
 		// this.model.charger.lostConnection();
 		this.detected = false;
-        this.emit('changed');
+        	this.emit('changed');
 	}
-/*
-	async sendMaxCharging(): Promise<void>
+
+	async sendCharging(): Promise<void>
 	{
 		const data = new Uint8Array(8);
 
@@ -141,8 +149,8 @@ export class ELCONCharger extends events.EventEmitter implements Charger
 		return this.vesc.sendCAN( 0x1806E5F4, data, false )
 			.then( () => { 
 				// console.log( "Sent CAN to charger" );
-				this.sender = setTimeout( this.sendMaxCharging.bind(this), 1000 );
+				this.sender = setTimeout( this.sendCharging.bind(this), 1000 );
 			} );
 	}
-    */
+
 }
