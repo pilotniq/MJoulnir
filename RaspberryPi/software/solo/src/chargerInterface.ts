@@ -7,6 +7,7 @@ export interface Charger extends events.EventEmitter
 {
 	detected: boolean
 	powered: boolean
+	do_charge: boolean
 	acc_charge_J: number
 	output_voltage: number
 	output_current: number

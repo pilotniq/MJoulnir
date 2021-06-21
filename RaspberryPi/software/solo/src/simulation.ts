@@ -41,7 +41,7 @@ export class SimulatedBoat implements LowLevelHardware
     constructor()
     {
         this.batteryReader = new SimulatedBatteryReader()
-        this.vesc = new SimulatedVESC()
+        this.vesc = new SimulatedVESC(this.batteryReader)
         this.vescTalker = new VESCreader.VESCtalker(this.vesc) // bleVESC: VESCble.VESCinterface
         this.charger = new SimulatedCharger(this.batteryReader)
 
@@ -227,6 +227,7 @@ export class SimulatedCharger extends events.EventEmitter implements Charger
         this.updateSimulation()
     }
 
+    // called when charging parameters change
     updateSimulation(): void
     {
         if( this.simulationTimer == undefined && 
@@ -234,46 +235,93 @@ export class SimulatedCharger extends events.EventEmitter implements Charger
             this.powered && 
             this.do_charge )
         {
-            console.log( "Starting charger simulation timer")
+            // console.log( "Starting charger simulation timer")
             this.simulationTimer = setTimeout(  this.simulate.bind(this), 2000 )
-            this.output_voltage = this.battery.getVoltage()
+            // this.output_voltage = this.battery.getVoltage()
+            console.log( "SimulatedCharger.updateSimuation: starting, battery voltage=" + this.output_voltage)
         }
         else
         {
+            // called while the simulation loop is running, let the regular simulation handle it
+/*
+            var new_current = 0
+
+            if( this.output_current > this.max_current)
+                new_current = this.max_current
+            else if( this.output_voltage > this.max_voltage )
+            {
+                new_current = this.output_current - 1.0;
+                if( new_current < 0 )
+                    new_current = 0
+            }
+            else
+            {
+                const currentDiff = (this.max_current - this.output_current) / this.max_current;
+            
+                if( this.output_current < 0.1 )
+                    this.output_current = 0.1
+                new_current = this.output_current * 1.2; // increase current by 20%
+                if( new_current > this.max_current )
+                    new_current = this.max_current;
+            }
+            this.output_current = new_current;
+            this.output_voltage = this.battery.getVoltage()
+            console.log( "SimulatedCharger.updateSimulation: u=" + this.output_voltage + 
+                ", max_current=" + this.max_current + ", i=" + this.output_current )
+                */
+            /*
             console.log( "***Charger: Not simulating: detected=" + this.detected + 
                 ", timer=" + this.simulationTimer +
                 ", powered=" + this.powered + 
                 ", do_charge=" + this.do_charge )
+                */
         }
     }
 
     simulate(): void
     {
-        this.simulationTimer = undefined
+        // this.simulationTimer = undefined
         console.log( "Charger: simulate()")
         if( !this.detected || !this.powered || !this.do_charge || this.errorBits != 0 )
         {
-            console.log( "Stopping charging simulation")
-            return
+            // console.log( "Stopping charging simulation")
+            // this.simulationTimer = undefined
+            this.output_current = 0
+            this.output_voltage = this.battery.getVoltage(); 
         }
-
-        if( this.battery.getVoltage() < this.max_voltage && 
-            this.output_current < this.max_current)
+        else
         {
-            this.output_current += 1
-            if( this.output_current > this.max_current )
-                this.output_current = this.max_current
+            if( this.battery.getVoltage() < this.max_voltage && 
+                this.output_current < this.max_current)
+            {
+                this.output_current += 1
+                if( this.output_current > this.max_current )
+                    this.output_current = this.max_current
+            }
+            else if( this.battery.getVoltage() > this.max_voltage )
+            {
+                if( this.output_current > 1.9 )
+                    this.output_current -= 1
+                else if( this.output_current >= 0.9 )
+                    this.output_current = 0.9
+                else if( this.output_current >= 0.1 )
+                    this.output_current -= 0.1
+                else   
+                    this.output_current = 0
+            }
         }
-
         const power = this.output_current * this.output_voltage
         const energy = power * 2 // in Joules, two seconds between updates
 
         this.battery.addEnergy( this.output_current, energy )
         this.acc_charge_J += energy
 
+        this.output_voltage = this.battery.getVoltage()
+
         this.emit('changed');
 
-        this.updateSimulation()
+        this.simulationTimer = setTimeout(  this.simulate.bind(this), 2000 )
+        // this.updateSimulation()
     }
 }
 
@@ -287,7 +335,7 @@ class SimulatedBatteryReader extends events.EventEmitter implements BatteryReade
     // 3 to 4.2 volts 
     joulesPerVoltCellGroup = 5300 * 3600 / (1.2 * 6)
     current = 0
-
+    accelleratedCharging = true // speed up for simulation
     // these are the voltages not including inner resistance
     voltages: number[][]
     temperatures: number[][]
@@ -309,8 +357,14 @@ class SimulatedBatteryReader extends events.EventEmitter implements BatteryReade
 
     public getVoltage(): number
     {
-        return this.voltages.reduce( (sum, moduleVoltages) => moduleVoltages.reduce( (sum2, voltage) => sum + voltage, sum), 0) +
-            this.current * this.resistancePerCellGroup * 18
+        const baseVoltage = this.voltages.reduce( (sum, moduleVoltages) => moduleVoltages.reduce( (sum2, voltage) => sum2 + voltage, sum), 0)
+        const loss = -this.current * this.resistancePerCellGroup * 18
+        const apparentVoltage = baseVoltage - loss
+
+        console.log( "SimulatedBatteryReader: baseVoltage=" + baseVoltage + ", loss=" + loss + 
+            ", apparentVoltage=" + apparentVoltage)
+        return apparentVoltage
+            
     }
 
     public calculateVoltages(): number[][]
@@ -326,8 +380,12 @@ class SimulatedBatteryReader extends events.EventEmitter implements BatteryReade
 
     public addEnergy( current: number, joules: number )
     {
-        const dVoltage = joules / this.joulesPerVoltCellGroup
+        let dVoltage = joules / this.joulesPerVoltCellGroup
 
+        if( this.accelleratedCharging )
+            dVoltage = dVoltage 
+
+        console.log( "Simulated battery.addEnergy: dVoltage=" + dVoltage)
         for( let moduleIndex = 0; moduleIndex < this.voltages.length; moduleIndex++)
             for( let cellGroupIndex = 0; cellGroupIndex < this.voltages[moduleIndex].length; cellGroupIndex++)
                 this.voltages[moduleIndex][cellGroupIndex] += dVoltage
@@ -412,15 +470,17 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
 {
     readonly mcValues = new VESCble.Packet_Values()
 
+    battery: SimulatedBatteryReader
     connected = false
     isOn = false
     last_simulation_update?: number
 
     connectResolve?: () => void
 
-    constructor()
+    constructor( battery: SimulatedBatteryReader )
     {
         super()
+        this.battery = battery
         this.mcValues.type = VESCble.Packet.Types["GET_VALUES"]
         this.mcValues.invalid = true
         this.mcValues.isComplete = true
@@ -430,7 +490,7 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
         this.mcValues.temp_mos_3 = 20;
         this.mcValues.temp_motor = 20;
         this.mcValues.duty = 0;
-        this.mcValues.voltage_in = 70;
+        this.mcValues.voltage_in = battery.getVoltage();
         this.mcValues.current_in = 0;
         this.mcValues.energy_ah = 0;
         this.mcValues.energy_charged_ah = 0;
