@@ -331,18 +331,6 @@
                                     <action selector="disarm:" destination="hG3-bL-uEb" eventType="touchUpInside" id="KEw-oY-N35"/>
                                 </connections>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jIW-hq-eZv">
-                                <rect key="frame" x="240" y="597" width="82" height="54"/>
-                                <color key="backgroundColor" systemColor="systemYellowColor"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" constant="82" id="FMQ-aV-8kG"/>
-                                    <constraint firstAttribute="height" constant="38" id="M9m-E3-fQs"/>
-                                </constraints>
-                                <fontDescription key="fontDescription" type="system" pointSize="21"/>
-                                <state key="normal" title="Charge">
-                                    <color key="titleColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                </state>
-                            </button>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Not available" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="IAM-If-mzJ">
                                 <rect key="frame" x="90" y="44" width="282" height="21"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -357,6 +345,22 @@
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <button opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jIW-hq-eZv">
+                                <rect key="frame" x="210" y="597" width="82" height="54"/>
+                                <color key="backgroundColor" systemColor="systemYellowColor"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="82" id="FMQ-aV-8kG"/>
+                                    <constraint firstAttribute="height" constant="38" id="M9m-E3-fQs"/>
+                                    <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="54" id="vr6-NO-yHu"/>
+                                </constraints>
+                                <fontDescription key="fontDescription" type="system" pointSize="21"/>
+                                <state key="normal" title="Charge">
+                                    <color key="titleColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                </state>
+                                <connections>
+                                    <action selector="charge" destination="sFi-fU-gKU" eventType="touchUpInside" id="cnU-SM-mbx"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="YkA-jI-nuu"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -376,7 +380,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="DFK-tL-c44" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="4421" y="499"/>
+            <point key="canvasLocation" x="4420.0934579439254" y="498.92008639308858"/>
         </scene>
         <!--Active View Controller-->
         <scene sceneID="vgT-Jc-5ti">
@@ -537,10 +541,11 @@
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="0.80000000000000004" minValue="0.80000000000000004" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="yt1-cS-BrK">
+                            <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="0.80000000000000004" minValue="0.0" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="yt1-cS-BrK">
                                 <rect key="frame" x="14" y="81" width="261" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <connections>
+                                    <action selector="setTargetLevel:" destination="7tq-7B-E2u" eventType="valueChanged" id="jsV-hi-SjQ"/>
                                     <action selector="targetLevelSliderChanged" destination="7tq-7B-E2u" eventType="valueChanged" id="XTU-4L-WQ5"/>
                                 </connections>
                             </slider>
@@ -549,6 +554,7 @@
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <connections>
                                     <action selector="maxWallCurrentSliderChangd" destination="7tq-7B-E2u" eventType="valueChanged" id="leT-Yv-4LQ"/>
+                                    <action selector="maxWallCurrentSliderChanged2:forEvent:" destination="7tq-7B-E2u" eventType="valueChanged" id="RIB-Fe-5Sv"/>
                                 </connections>
                             </slider>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="80%" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="SOd-kd-4lm">
