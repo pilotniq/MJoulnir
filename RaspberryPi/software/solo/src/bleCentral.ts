@@ -4,6 +4,7 @@ import * as BoatModel from "./boatModel"
 const Bleno = require("@abandonware/bleno")
 
 import { ElectricDrivetrainStateMachine } from "./stateMachine"
+import assert from "http-assert"
 
 const UUID_DESCRIPTOR_CCCD = '2904'
 const UUID_DESCRIPTOR_CHARACTERISTIC_USER_DESCRIPTION = '2901'
@@ -18,6 +19,7 @@ const UUID_CHARACTERISTIC_BATTERY_IMBALANCE = '71498776a04c4800a1d925ebc70b0003'
 const UUID_CHARACTERISTIC_TEMPERATURES = '71498776a04c4800a1d925ebc70b0004';
 const UUID_CHARACTERISTIC_POWER = '71498776a04c4800a1d925ebc70b0005';
 const UUID_CHARACTERISTIC_CHARGER = '71498776a04c4800a1d925ebc70b0006';
+const UUID_CHARACTERISTIC_CHARGER_SETTINGS = '71498776a04c4800a1d925ebc70b0007';
 
 let blenoOn = false;
 let started = false;
@@ -68,7 +70,7 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 
 	onReadRequest(offset: number, callback: (error_code: number, data?: Buffer) => void )
 	{
-		console.log( "BoatModelCharacteristic.onReadRequest")
+		// console.log( "BoatModelCharacteristic.onReadRequest")
 		callback(Bleno.Characteristic.RESULT_SUCCESS, this.value);
 	}
 
@@ -76,7 +78,7 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 	abstract buildValue(): void
 
 	updateValue() {
-		console.log( "BoatModelCharacteristic.updateValue entry for " + this.name )
+		// console.log( "BoatModelCharacteristic.updateValue entry for " + this.name )
 		const oldValue = Buffer.from( this.value )
 
 		this.buildValue();
@@ -86,8 +88,8 @@ abstract class BoatModelCharacteristic extends Bleno.Characteristic
 			// console.log( "Calling updateValueCallback" );
 			this.updateValueCallback( this.value );
 		}
-		else
-			console.log( "Attribute " + this.name + ", update called but not changed" )
+		// else
+		//	console.log( "Attribute " + this.name + ", update called but not changed" )
 		// console.log( "BoatModelCharacteristic.updateValue exit")
 	}
 }
@@ -234,8 +236,7 @@ class TemperaturesCharacteristic extends BoatModelCharacteristic
 		}
 		else
 		{
-			console.log( "TemperaturesCharacteristic.buildValue: vescState is invalid");
-			
+			// console.log( "TemperaturesCharacteristic.buildValue: vescState is invalid");
 			this.value[0] = 0x80;
 			this.value[1] = 0x80;
 			this.value[2] = 0x80;
@@ -292,8 +293,8 @@ class StateCharacteristic extends WritableBoatModelCharacteristic
 
 	updateValue()
 	{
-		console.log( "StateCharacteristic: updateValue()")
-		console.trace()
+		// console.log( "StateCharacteristic: updateValue()")
+		// console.trace()
 		super.updateValue()
 	}
 
@@ -372,7 +373,7 @@ class PowerCharacteristic extends BoatModelCharacteristic
 
 		this.value[8] = Math.round(this.vesc.duty_now * 100)
 
-		console.log( "PowerCharacteristic.buildValue called. duty_now=" + this.vesc.duty_now)
+		// console.log( "PowerCharacteristic.buildValue called. duty_now=" + this.vesc.duty_now)
 	}
 }
 
@@ -416,6 +417,45 @@ class ChargerStateCharacteristic extends BoatModelCharacteristic
 	}
 }
 
+class ChargerSettingsCharacteristic extends WritableBoatModelCharacteristic
+{
+	//
+	// byte 0: max wall current * 10
+	// byte 1: target state of charge (%)
+	//
+	constructor(model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine) {
+		super( model, model.state, UUID_CHARACTERISTIC_CHARGER_SETTINGS, "ChargerSettings" );
+
+		this.stateMachine = stateMachine
+		this.value = Buffer.alloc(2);
+		this.buildValue()
+		this.model.state.onChanged( this.updateValue.bind(this) );
+	}
+
+	onWriteRequest(data: Buffer, offset: number, without_response: boolean, 
+		callback: (error_code: number) => void )
+	{
+		const max_wall_current = data[0] / 10
+		const soc = data[1] / 100
+
+		console.log( "BoatModelCharacteristic.onWriteRequest")
+
+		this.model.charger.setSettings( max_wall_current, soc )
+		callback(Bleno.Characteristic.RESULT_SUCCESS);
+	}
+
+	buildValue()
+	{
+		assert( this.model.charger.max_wall_current <= 25.5 )
+		this.value[0] = Math.round(this.model.charger.max_wall_current * 10)
+
+		assert( this.model.charger.target_soc >=0 )
+		assert( this.model.charger.target_soc <=1 )
+		this.value[1] = Math.round(this.model.charger.target_soc * 100)
+	}
+
+}
+
 class ElectricDrivetrainService extends Bleno.PrimaryService {
 	constructor( model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine)
 	{
@@ -427,7 +467,8 @@ class ElectricDrivetrainService extends Bleno.PrimaryService {
 				new BatteryBalanceCharacteristic(model),
 				new TemperaturesCharacteristic(model),
 				new PowerCharacteristic(model),
-				new ChargerStateCharacteristic(model)
+				new ChargerStateCharacteristic(model),
+				new ChargerSettingsCharacteristic(model, stateMachine)
       	      ]
   	  });
 	}

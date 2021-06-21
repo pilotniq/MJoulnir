@@ -10,6 +10,7 @@ import * as BatteryReader from './batteryReader';
 import { FileHandle } from 'fs/promises';
 import { LowLevelHardware } from './lowLevelHardware';
 import { Charger, ChargerError } from './chargerInterface'
+import assert from 'http-assert';
 
 // import { Hardware } from './hardware';
 
@@ -59,9 +60,17 @@ export class MJoulnirState extends BoatModelAttribute
 
 export class ChargerState extends BoatModelAttribute
 {
+	static readonly MIN_CHARGING_CURRENT = 1.0;
+	static readonly CHARGE_PERIOD_DURATION = 8 * 60
+	static readonly PAUSE_PERIOD_DURATION = 2 * 60
+
 	public static readonly efficiency = 0.9;
 
 	public charger: Charger;
+
+	// settings
+	max_wall_current = 9;
+	target_soc = 0.8;
 
 	public detected = false;
 	public powered = false;
@@ -99,7 +108,8 @@ export class ChargerState extends BoatModelAttribute
 	{
 		let changed = false;
 
-		console.log( "BoatModel.ChargerState: update called");
+		console.log( "BoatModel.ChargerState: update called. Charger output voltage=" + this.charger.output_voltage + 
+			", current=" + this.charger.output_current );
 
 		if( this.charger.detected != this.detected )
 		{
@@ -111,7 +121,11 @@ export class ChargerState extends BoatModelAttribute
 			this.powered = this.charger.powered;
 			changed = true;
 		}
-		
+		if( this.charger.do_charge != this.do_charge )
+		{
+			this.do_charge = this.charger.do_charge
+			changed = true
+		}
 		if( this.charger.acc_charge_J != this.total_charge_J )
 		{
 			this.total_charge_J = this.charger.acc_charge_J;
@@ -257,6 +271,18 @@ export class ChargerState extends BoatModelAttribute
 		this.charger.setChargingParameters( max_voltage, max_current, doCharge )
 	}
 	
+	setSettings(max_wall_current: number, target_soc: number)
+	{
+		assert(target_soc <= 1.0)
+		assert(target_soc >= 0)
+		assert(max_wall_current >= 0)
+
+		this.max_wall_current = max_wall_current;
+		this.target_soc = target_soc;
+
+		this.signalUpdated()
+	}
+
 	toString(): string
 	{
 		let result: string;
@@ -570,7 +596,7 @@ export class Battery extends BoatModelAttribute
 				const dV = currentVoltages[ module_index ][ cell_index ]
 					- idleVoltages[ module_index ][ cell_index ];
 
-				const resistance = dV / currentPerCell;
+				const resistance = dV / current;
 				// if( (module_index == 0) && (cell_index == 0) )
 				//	console.log( "dV[0][0]=" + dV )
 				resistances[ module_index ][ cell_index ] = resistance;
@@ -1011,10 +1037,10 @@ export class HardwareState extends BoatModelAttribute
 export class BoatModel extends Model.Model
 {
 	state = new MJoulnirState(this, State.Idle)
-	charger
-	hardware
-	battery
-	vescState
+	charger: ChargerState
+	hardware: HardwareState
+	battery: Battery
+	vescState: VESC
 
 	constructor( batteryReader: BatteryReader.BatteryReader, vescTalker: VESCreader.VESCtalker,
 		hardware: LowLevelHardware, charger: Charger )

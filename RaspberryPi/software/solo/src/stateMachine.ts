@@ -270,12 +270,13 @@ class ArmedState extends MJoulnirState
 {
 	// my Nedis remote controlled outlet can't handle 10A for very long.
 	// default should be 10. But set elsewhere, from Bluetooth?
-	static readonly MAX_WALL_CURRENT = 9;
+	// static readonly MAX_WALL_CURRENT = 9;
 
 	boundChargerListener: () => void;
 	boundBatteryListener: () => void;
 	boundESCListener: () => void;
 	readonly model: BoatModel.BoatModel;
+	pauseAutoCharge = false
 
 	constructor(machine: ElectricDrivetrainStateMachine)
 	{
@@ -312,6 +313,9 @@ class ArmedState extends MJoulnirState
 
 	exit(): void
 	{
+		console.log( "chargeState.exit: pauseAutoCharge = false")
+		this.pauseAutoCharge = false
+
 		this.model.charger.unOnChanged( this.boundChargerListener );
 		this.model.battery.unOnChanged( this.boundBatteryListener );
 		this.model.vescState.unOnChanged( this.boundESCListener );
@@ -352,6 +356,11 @@ class ArmedState extends MJoulnirState
 
 	considerAction(): void
 	{
+		if( this.pauseAutoCharge )
+		{
+			console.log( "considerAction: Not charging because pauseAutoCharge")
+			return
+		}
 		const charger = this.stateMachine.model.charger
 		const soc = this.model.battery.soc_from_max_voltage()
 		const min_soc = this.model.battery.soc_from_min_voltage()
@@ -366,7 +375,7 @@ class ArmedState extends MJoulnirState
 			{
 				// charge to 80% SOC, max 10 A from wall.
 				// 
-				this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
+				// this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
 				this.transitionTo( this.stateMachine.chargeState )
 			}
 			else if( !this.model.battery.isBalanced() && 
@@ -507,10 +516,6 @@ class ActiveState extends MJoulnirState
 
 class ChargeState extends MJoulnirState
 {
-	static readonly MIN_CHARGING_CURRENT = 1.0;
-	static readonly CHARGE_PERIOD_DURATION = 8 * 60
-	static readonly PAUSE_PERIOD_DURATION = 2 * 60
-
 	readonly battery: BoatModel.Battery;
 	readonly model: BoatModel.BoatModel;
 
@@ -529,10 +534,10 @@ class ChargeState extends MJoulnirState
 	resume_time = 0;
 	charging_current = 0;
 	latest_charging_current = 0;
-	target_soc?: number; // 0 to 1
+	// target_soc?: number; // 0 to 1
 	target_max_cell_voltage?: number
 	target_pack_voltage = 0
-	max_wall_current: number;
+	// max_wall_current: number;
 	idle_cell_voltages?: number[][];
 	max_current_voltages?: number[][];
 	internal_resistance_timer?: NodeJS.Timer;
@@ -548,15 +553,17 @@ class ChargeState extends MJoulnirState
 		this.model = machine.model;
 		this.charger = this.model.charger
 		this.battery = machine.model.battery;
-		this.max_wall_current = 0;
+		// this.max_wall_current = 0;
 
 		this.boundChargerListener = this.chargerChanged.bind( this );
 		this.boundBatteryListener = this.batteryChanged.bind( this );
+
+		// todo: listen to changes in charger model parameters
 	}
 
 	// target_soc is the desired max state of charge for any cell when charging is finished.
 	// it is a value between 0 and 1
-
+/*
 	public setParameters( target_soc: number, max_wall_current: number )
 	{
 		assert( target_soc > 0 );
@@ -565,7 +572,7 @@ class ChargeState extends MJoulnirState
 		this.target_soc = target_soc;
 		this.max_wall_current = max_wall_current;
 	}
-
+*/
 	canEnter(): boolean
 	{
 		// check if charger is online
@@ -584,8 +591,8 @@ class ChargeState extends MJoulnirState
 		this.stateMachine.model.battery.onChanged( this.boundBatteryListener )
 
 		// this.target_soc = target_soc;
-		assert( this.target_soc! >= 0 );
-		assert( this.target_soc! <= 1.0 );
+		assert( this.charger.target_soc! >= 0 );
+		assert( this.charger.target_soc! <= 1.0 );
 
 		this.current_limiting = false;
 		this.charging_current = 0;
@@ -593,7 +600,7 @@ class ChargeState extends MJoulnirState
 		this.resistances_estimated = false
 
 		// TODO: ramp up charging currenet
-		this.target_max_cell_voltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.target_soc! );
+		this.target_max_cell_voltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.charger.target_soc! );
 		console.log( "Charging: target max cell voltage is " + this.target_max_cell_voltage.toFixed(3) + " V" );
 
 		// TODO: monitor power switch
@@ -604,6 +611,7 @@ class ChargeState extends MJoulnirState
 		// update battery state every second
 		this.battery.setPollingInterval( 1 );
 
+		// this assert triggers
 		assert(this.pauseTimer === undefined )
 		// setTimeout( this.estimateResistances.bind(this), 5000 );
 		// this.pauseTimer = setTimeout( this.pauseCharging.bind(this), ChargeState.CHARGE_PERIOD_DURATION * 1000 )
@@ -639,7 +647,7 @@ class ChargeState extends MJoulnirState
 			console.log( "Restarting pause" );
 			clearTimeout( this.pauseTimer! );
 		}
-		this.pauseTimer = setTimeout( this.resumeCharging.bind(this), ChargeState.PAUSE_PERIOD_DURATION * 1000 )
+		this.pauseTimer = setTimeout( this.resumeCharging.bind(this), BoatModel.ChargerState.PAUSE_PERIOD_DURATION * 1000 )
 	}
 
 	resumeCharging(): void
@@ -661,8 +669,10 @@ class ChargeState extends MJoulnirState
 
 		this.resume_time = Date.now() / 1000.0
 
-		console.log( (new Date().toISOString()) + ": Starting pauseTimer for pause, duration=" + ChargeState.CHARGE_PERIOD_DURATION)
-		this.pauseTimer = setTimeout( this.pauseCharging.bind(this), ChargeState.CHARGE_PERIOD_DURATION * 1000 )
+		console.log( (new Date().toISOString()) + ": Starting pauseTimer for pause, duration=" + 
+					 BoatModel.ChargerState.CHARGE_PERIOD_DURATION)
+		this.pauseTimer = setTimeout( this.pauseCharging.bind(this), 
+									  BoatModel.ChargerState.CHARGE_PERIOD_DURATION * 1000 )
 	}
 
 	exit( )
@@ -671,7 +681,8 @@ class ChargeState extends MJoulnirState
 		this.stateMachine.model.battery.unOnChanged( this.boundBatteryListener )
 
 		clearTimeout( this.pauseTimer! )
-
+		this.pauseTimer = undefined
+		
 		console.log( "Turning off charger" );
 
 		this.charger.setChargingParameters( 0, 0, false );
@@ -697,7 +708,7 @@ class ChargeState extends MJoulnirState
 		// Voltage will increase by .07 mV.
 		// 1.5 Amps change will increase voltage by about 1 mV per cell
 
-		const targetCellVoltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.target_soc! );
+		const targetCellVoltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.charger.target_soc! );
 		const maxCellVoltage = this.battery.getMaxCellVoltage()!
 		// assert( maxCellVoltage <= targetCellVoltage );
 
@@ -737,12 +748,12 @@ class ChargeState extends MJoulnirState
 			console.log( "Switching to current limiting mode")
 		}
 
-		const maxPowerIn = 230 * this.max_wall_current // Watts, 10 amps in regular outlet
+		const maxPowerIn = 230 * this.charger.max_wall_current // Watts, 10 amps in regular outlet
 		const maxPowerOut = maxPowerIn * BoatModel.ChargerState.efficiency;
-		// const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/this.target_pack_voltage;
-		const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/this.charger.output_voltage;
+		const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/this.target_pack_voltage;
+		// const maxChargingCurrent = maxPowerOut * (1 - this.temperature_derating)/this.charger.output_voltage;
 
-		console.log( "max_wall_current=" + this.max_wall_current + 
+		console.log( "max_wall_current=" + this.charger.max_wall_current + 
 			", maxPowerIn=" + maxPowerIn + 
 			", maxPowerOut=" + maxPowerOut + 
 			", temperature_derating=" + this.temperature_derating +
@@ -792,7 +803,7 @@ class ChargeState extends MJoulnirState
 
 		if( this.current_limiting )
 		{
-			if( this.charging_current <= ChargeState.MIN_CHARGING_CURRENT )
+			if( this.charging_current <= BoatModel.ChargerState.MIN_CHARGING_CURRENT )
 			{
 				if( voltageDiff <= 0 )
 				{
@@ -858,8 +869,10 @@ class ChargeState extends MJoulnirState
 		// assert( charger.canCharge() );
 
 		if( charger.do_charge! )
+		{
 			this.latest_charging_current = charger.output_current!
-
+			console.log( "ChargeState.chargerChanged: latest_charging_current=" + this.latest_charging_current )
+		}
 		if( !charger.canCharge() || charger!.output_voltage! > 75.6 || charger!.output_current! > 40 )
 		{
 			console.log( "Aborting charging due to charger" );
@@ -959,6 +972,21 @@ class ChargeState extends MJoulnirState
 		this.recalculateCharging();
 	}
 
+	requestTransition( nextState: MJoulnirState ): boolean
+	{
+		console.log( "ChargeState: got transition request to " + nextState.name )
+		switch( nextState )
+		{
+			case this.stateMachine.armedState:
+				console.log( "ChargeState: setting armedState.pauseAutoCharge to true")
+				this.stateMachine.armedState.pauseAutoCharge = true
+				this.transitionTo( nextState )
+				return true;
+
+			default:
+				return false;
+		}
+	}
 }
 
 class BalancingState extends MJoulnirState
@@ -1212,7 +1240,7 @@ class BalancingState extends MJoulnirState
 	done(): void
 	{
 		// this.stateMachine.chargeState.target_soc = 0.8;
-		this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
+		// this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
 		this.transitionTo( this.stateMachine.chargeState );
 	}
 
