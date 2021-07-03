@@ -137,6 +137,18 @@ export class SimulatedBoat implements LowLevelHardware
         }
         )
 
+        this.router.put( '/api/v1/vesc/throttle', async (ctx) => {
+            const query = ctx.request.query
+            const body = ctx.request.body
+            console.log( "PUT throttle: body: " + JSON.stringify(body) );
+
+            // const powered = query['powered']
+            console.log( "body.throttle=" + ctx.request.body.throttle + " type=" + (typeof ctx.request.body.throttle))
+            const throttle = ctx.request.body.throttle / 100.0
+            this.vesc.setThrottle( throttle )
+            console.log( "Web set throttle to " + Math.round(throttle * 100) + " %")
+        })
+
         this.router.get( '/api/v1/charger/powered', async (ctx) => {
             console.log( "Received an API call to set charger detected" + ctx.request.path);
             console.log( "Query" + JSON.stringify(ctx.request.query));
@@ -236,7 +248,7 @@ export class SimulatedCharger extends events.EventEmitter implements Charger
             this.do_charge )
         {
             // console.log( "Starting charger simulation timer")
-            this.simulationTimer = setTimeout(  this.simulate.bind(this), 2000 )
+            this.simulationTimer = setTimeout(  this.simulate.bind(this), 500 )
             // this.output_voltage = this.battery.getVoltage()
             console.log( "SimulatedCharger.updateSimuation: starting, battery voltage=" + this.output_voltage)
         }
@@ -294,7 +306,7 @@ export class SimulatedCharger extends events.EventEmitter implements Charger
             if( this.battery.getVoltage() < this.max_voltage && 
                 this.output_current < this.max_current)
             {
-                this.output_current += 1
+                this.output_current += 3
                 if( this.output_current > this.max_current )
                     this.output_current = this.max_current
             }
@@ -496,13 +508,13 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
         this.mcValues.energy_charged_ah = 0;
         this.mcValues.energy_wh = 0;
         this.mcValues.energy_charged_wh = 0;
+        this.mcValues.rpm = 0;
         /*
         this.mcValues.current_motor = 0;
         this.mcValues.current_in = 0;
         this.mcValues.current_id = 0;
         this.mcValues.current_iq = 0;
         this.mcValues.duty = 0;
-        this.mcValues.rpm = 0;
         this.mcValues.voltage_in = 0;
         this.mcValues.tachometer: number;
         this.mcValues.tachometer_abs: number;
@@ -565,18 +577,17 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
     }
 
     sendCAN( id: number, data: Uint8Array, withResponse: boolean ): Promise<void>
-    {
+    {        
         return Promise.resolve()
     }
 
     setThrottle( value: number ): void
     {
-
         const power = -10000 * value
     
         this.mcValues.duty = value
         this.mcValues.current_in = power / this.mcValues.voltage_in
-
+        this.mcValues.rpm = 4300 * value
         this.getValues()
     }
 

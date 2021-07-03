@@ -271,13 +271,20 @@ export class ChargerState extends BoatModelAttribute
 		this.charger.setChargingParameters( max_voltage, max_current, doCharge )
 	}
 	
-	setSettings(max_wall_current: number, target_soc: number)
+	setMaxWallCurrent(max_wall_current: number)
 	{
-		assert(target_soc <= 1.0)
-		assert(target_soc >= 0)
 		assert(max_wall_current >= 0)
 
 		this.max_wall_current = max_wall_current;
+
+		this.signalUpdated()
+	}
+
+	setTargetSOC(target_soc: number)
+	{
+		assert(target_soc <= 1.0)
+		assert(target_soc >= 0)
+
 		this.target_soc = target_soc;
 
 		this.signalUpdated()
