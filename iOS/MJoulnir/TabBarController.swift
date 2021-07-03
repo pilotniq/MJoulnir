@@ -36,7 +36,8 @@ class TabBarController: UITabBarController, SetModel {
       // self.bluetoothStateLabel.text = "Bluetooth: \(String(describing: newState))"
       if(newState == .scanning)
       {
-        self.performSegue(withIdentifier: "scanningSegue", sender: nil);
+        // self.performSegue(withIdentifier: "scanningSegue", sender: nil);
+        // self.dismiss(animated:true)
       }
     }
   }

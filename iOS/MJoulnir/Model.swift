@@ -51,13 +51,13 @@ struct ChargerState
   var outputCurrent: Double
   var ackChargeWh: Int
 }
-
+/*
 struct ChargerSettings
 {
   var max_wall_current: Double
   var target_soc: Double
 }
-
+*/
 class Model: NSObject, ObservableObject
 {
   enum BluetoothState {
@@ -98,7 +98,8 @@ class Model: NSObject, ObservableObject
   @Published private(set) var power: Power?
   @Published private(set) var batteryLevel: UInt?
   @Published private(set) var chargerState: ChargerState?
-  @Published private(set) var chargerSettings: ChargerSettings?
+  @Published private(set) var chargerMaxWallCurrent: Double?
+  @Published private(set) var chargerTargetSOC: UInt?
 
   private var centralManager: CBCentralManager!
   private var locationManager: CLLocationManager!
@@ -114,7 +115,8 @@ class Model: NSObject, ObservableObject
   private var characteristic_power: CBCharacteristic!
   private var characteristic_temperatures: CBCharacteristic!
   private var characteristic_chargerState: CBCharacteristic!
-  private var characteristic_chargerSettings: CBCharacteristic!
+  private var characteristic_chargerMaxWallCurrent: CBCharacteristic!
+  private var characteristic_chargerTargetSOC: CBCharacteristic!
 
   override public init()
   {
@@ -171,6 +173,22 @@ class Model: NSObject, ObservableObject
     // Try below, otherwise we don't get a notification?
     // self.mjoulnir!.readValue(for: self.characteristic_state)
   }
+
+  func requestSetTargetSOC( newTargetSOC: UInt )
+  {
+    var data = Data(capacity: 1)
+    data.append(UInt8(newTargetSOC))
+    self.mjoulnir!.writeValue( data, for: self.characteristic_chargerTargetSOC, type: CBCharacteristicWriteType.withResponse )
+
+  }
+
+  func requestSetMaxWallCurrent( newMaxWallCurrent: Double )
+  {
+    var data = Data(capacity: 1)
+    data.append(UInt8((newMaxWallCurrent * 10).rounded()))
+    self.mjoulnir!.writeValue( data, for: self.characteristic_chargerMaxWallCurrent, type: CBCharacteristicWriteType.withResponse )
+  }
+
 }
 
 // Byte array (Data) to integer functionality
@@ -328,8 +346,14 @@ extension Model: CBPeripheralDelegate {
         peripheral.readValue(for: characteristic)
         break
 
-      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerSettings_UUID:
-        self.characteristic_chargerSettings = characteristic
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerMaxWallCurrent_UUID:
+        self.characteristic_chargerMaxWallCurrent = characteristic
+        peripheral.setNotifyValue(true, for: characteristic)
+        peripheral.readValue(for: characteristic)
+        break
+
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerTargetSOC_UUID:
+        self.characteristic_chargerTargetSOC = characteristic
         peripheral.setNotifyValue(true, for: characteristic)
         peripheral.readValue(for: characteristic)
         break
@@ -449,15 +473,20 @@ extension Model: CBPeripheralDelegate {
                                          ackChargeWh: Int(ackCharge))
         break;
 
-      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerSettings_UUID:
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerMaxWallCurrent_UUID:
         // TODO: make resilient to fewer bytes
         let max_wall_current = Double(characteristic.value![0]) / 10.0
-        let target_soc = Double(characteristic.value![1]) / 100.0
 
-        self.chargerSettings = ChargerSettings(max_wall_current: max_wall_current,
-                                               target_soc: target_soc)
+        self.chargerMaxWallCurrent = max_wall_current
         break;
-        
+
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerTargetSOC_UUID:
+        // TODO: make resilient to fewer bytes
+        let target_soc = characteristic.value![0]
+
+        self.chargerTargetSOC = UInt(target_soc)
+        break;
+
       default:
         print( "Unrecognized characteristic UUID \(characteristic.uuid)" )
     }
@@ -493,8 +522,6 @@ extension Model: CLLocationManagerDelegate {
   func locationManager(_ manager: CLLocationManager,
              didUpdateLocations locations: [CLLocation])
   {}
-
-
 
   func locationManager(_: CLLocationManager, didUpdateHeading: CLHeading)
   {}

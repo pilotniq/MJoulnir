@@ -32,7 +32,8 @@ class ChargingViewController: UIViewController, SetModel {
   var chargerStateSubscription: AnyCancellable?
   var batterySubscription: AnyCancellable?
   var temperaturesSubscription: AnyCancellable?
-  var chargerSettingsSubscription: AnyCancellable?
+  var chargerMaxWallCurrentSubscription: AnyCancellable?
+  var chargerTargetSOCSubscription: AnyCancellable?
 
   override func viewDidLoad() {
         super.viewDidLoad()
@@ -42,27 +43,36 @@ class ChargingViewController: UIViewController, SetModel {
     
   override func viewWillAppear(_ animated: Bool) {
     chargerStateSubscription = model?.$chargerState.sink(receiveValue:self.updateChargerState)
-
-
     batterySubscription = model?.$batteryLevel.sink { newLevel in self.updateBattery( batteryLevelOpt: newLevel ) }
 
     /* self.batterySubscription = model?.$batteryLevel.sink(receiveValue:self.updateBattery) */
     temperaturesSubscription = model?.$temperatures.sink { newTemperatures in self.updateTemperatures(temperaturesOpt: newTemperatures) }
 
-    chargerSettingsSubscription = model?.$chargerSettings.sink { newSettings in self.updateChargerSettings(chargerSettingsOpt: newSettings) }
+    chargerMaxWallCurrentSubscription = model?.$chargerMaxWallCurrent.sink { newMaxWallCurrent in self.updateMaxWallCurrent(maxWallCurrentOpt: newMaxWallCurrent) }
+    chargerTargetSOCSubscription = model?.$chargerTargetSOC.sink { newTargetSOC in self.updateTargetSOC(targetSOCOpt: newTargetSOC) }
 
     updateTemperatures(temperaturesOpt: model?.temperatures)
     updateBattery(batteryLevelOpt: model?.batteryLevel)
     updateChargerState(chargerStateOpt: model?.chargerState)
-    updateChargerSettings(chargerSettingsOpt: model?.chargerSettings)
+    updateMaxWallCurrent(maxWallCurrentOpt: model?.chargerMaxWallCurrent)
+    updateTargetSOC(targetSOCOpt: model?.chargerTargetSOC)
  //    targetLevelSlider.setValue(model!.chargerState., animated: <#T##Bool#>)
   }
 
   override func viewWillDisappear(_ animated: Bool) {
     chargerStateSubscription?.cancel()
     temperaturesSubscription?.cancel()
-    chargerSettingsSubscription?.cancel()
+    chargerMaxWallCurrentSubscription?.cancel()
+    chargerTargetSOCSubscription?.cancel()
     batterySubscription?.cancel()
+  }
+
+  @IBAction func setTargetSOC() {
+    model?.requestSetTargetSOC(newTargetSOC: UInt(self.targetLevelSlider.value.rounded()))
+  }
+
+  @IBAction func setMaxWallCurrent() {
+    model?.requestSetMaxWallCurrent(newMaxWallCurrent: Double(self.maxWallCurrentSlider.value))
   }
 
   func updateTemperatures( temperaturesOpt: Temperatures? )
@@ -108,20 +118,31 @@ class ChargingViewController: UIViewController, SetModel {
     }
   }
 
-  func updateChargerSettings( chargerSettingsOpt: ChargerSettings?)
+  func updateMaxWallCurrent( maxWallCurrentOpt: Double?)
   {
-    if let chargerSettings = chargerSettingsOpt
+    if let maxWallCurrent = maxWallCurrentOpt
     {
       let nf = NumberFormatter()
       nf.maximumFractionDigits = 0
       nf.numberStyle = .decimal
 
-      self.maxWallCurrentSlider.setValue(Float(chargerSettings.max_wall_current), animated: false)
-      self.maxWallCurrentLabel.text = "\(nf.string(from: NSNumber(value: chargerSettings.max_wall_current))!) A (\(nf.string(from: NSNumber(value: chargerSettings.max_wall_current * 230))!) W)"
-      self.targetLevelSlider.setValue(Float(chargerSettings.target_soc), animated: false)
-      var targetSoc = (chargerSettings.target_soc * 100)
-      targetSoc.round()
-      self.targetLevelLabel.text = "\(nf.string(from: NSNumber(value: targetSoc))!)%"
+      self.maxWallCurrentSlider.setValue(Float(maxWallCurrent), animated: false)
+      self.maxWallCurrentLabel.text = "\(nf.string(from: NSNumber(value:maxWallCurrent))!) A (\(nf.string(from: NSNumber(value: maxWallCurrent * 230))!) W)"
+    }
+  }
+
+  func updateTargetSOC( targetSOCOpt: UInt?)
+  {
+    if let targetSOC = targetSOCOpt
+    {
+      let nf = NumberFormatter()
+      nf.maximumFractionDigits = 0
+      nf.numberStyle = .decimal
+
+      self.targetLevelSlider.setValue(Float(targetSOC), animated: false)
+      // var targetSoc = (chargerSettings.target_soc * 100)
+      // targetSoc.round()
+      self.targetLevelLabel.text = "\(nf.string(from: NSNumber(value: targetSOC))!)%"
     }
   }
 
@@ -141,11 +162,11 @@ class ChargingViewController: UIViewController, SetModel {
     nf.numberStyle = .decimal
 
     // snap in increments of 0.1 Amps
-    let soc = round(sender.value * 100) / 100
+    let soc = round(sender.value)
     sender.value = soc;
 
     // nf.string( from: NSNumber(value: -newPower!.power))
-    changedTargetLevelLabel.text = "\(nf.string( from: NSNumber(value: soc * 100))!)%"
+    changedTargetLevelLabel.text = "\(nf.string( from: NSNumber(value: soc))!)%"
     // print("UISlider: \(sender.value)")
   }
   @IBAction func maxWallCurrentSliderChanged2(_ sender: UISlider, forEvent event: UIEvent)
@@ -172,8 +193,6 @@ class ChargingViewController: UIViewController, SetModel {
 
   }
   @IBAction func maxWallCurrentSliderChangd() {
-  }
-  @IBAction func setMaxWallCurrent() {
   }
   @IBAction func stopCharging() {
     self.model?.requestStateChange(newState: .Armed)

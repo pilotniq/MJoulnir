@@ -22,8 +22,8 @@ struct CBUUIDs{
   static let kBLE_MJoulnirCharacteristic_Temperatures_UUID = "71498776-a04c-4800-a1d9-25ebc70b0004"
   static let kBLE_MJoulnirCharacteristic_Power_UUID = "71498776-a04c-4800-a1d9-25ebc70b0005"
   static let kBLE_MJoulnirCharacteristic_ChargerState_UUID = "71498776-a04c-4800-a1d9-25ebc70b0006"
-  static let kBLE_MJoulnirCharacteristic_ChargerSettings_UUID = "71498776-a04c-4800-a1d9-25ebc70b0007"
-//    static let MaxCharacters = 20
+  static let kBLE_MJoulnirCharacteristic_ChargerMaxWallCurrent_UUID = "71498776-a04c-4800-a1d9-25ebc70b0007"
+  static let kBLE_MJoulnirCharacteristic_ChargerTargetSOC_UUID = "71498776-a04c-4800-a1d9-25ebc70b0008"
 
 
   static let BLEBatteryService_UUID = CBUUID(string: kBLE_BatteryService_UUID)
@@ -35,5 +35,6 @@ struct CBUUIDs{
   static let BLEMjoulnirCharacteristic_Temperatures_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_Temperatures_UUID)
   static let BLEMjoulnirCharacteristic_Power_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_Power_UUID)
   static let BLEMjoulnirCharacteristic_ChargerState_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_ChargerState_UUID)
-  static let BLEMjoulnirCharacteristic_ChargerSettings_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_ChargerSettings_UUID)
+  static let BLEMjoulnirCharacteristic_ChargerMaxWallCurrent_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_ChargerMaxWallCurrent_UUID)
+  static let BLEMjoulnirCharacteristic_ChargerTargetSOC_UUID = CBUUID(string: kBLE_MJoulnirCharacteristic_ChargerTargetSOC_UUID)
 }
