@@ -22,7 +22,7 @@ AR Path="/602891CC" Ref="Q?"  Part="1"
 AR Path="/6027BF0D/602891CC" Ref="Q6"  Part="1" 
 F 0 "Q6" V 7242 3600 50  0000 C CNN
 F 1 "SQJ479EP-T1_GE3" V 7151 3600 50  0000 C CNN
-F 2 "Package_SO:Vishay_PowerPAK_1212-8_Single" H 7100 3525 50  0001 L CIN
+F 2 "erland-footprints:Q-VISHAY-PowerPAK SO-8L Single" H 7100 3525 50  0001 L CIN
 F 3 "https://www.vishay.com/docs/75129/sqj479ep.pdf" V 6900 3600 50  0001 L CNN
 	1    6900 3600
 	0    1    -1   0   

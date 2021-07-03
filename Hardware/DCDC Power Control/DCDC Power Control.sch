@@ -33,7 +33,7 @@ Wire Wire Line
 	1700 1750 1900 1750
 Text Notes 800  1150 0    50   ~ 0
 Low current battery power in
-Text Notes 2300 750  0    50   ~ 0
+Text Notes 650  3750 0    50   ~ 0
 Momentary Power Switch Connection
 $Comp
 L Connector:Screw_Terminal_01x02 J4
@@ -48,7 +48,7 @@ F 3 "~" H 9950 2550 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	9700 2700 9700 2550
-Text Notes 3800 800  0    50   ~ 0
+Text Notes 9150 3050 0    50   ~ 0
 Power to DC/DC Converters
 Text Notes 2700 2650 0    50   ~ 0
 Momentary Power Switch connection\n3.3V < 1 mA will go through switch
@@ -238,7 +238,7 @@ F 3 "" H 1950 6150 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	1950 6150 1950 5950
+	1950 6150 1950 6050
 Wire Wire Line
 	1950 5950 2200 5950
 Wire Wire Line
@@ -557,4 +557,38 @@ Wire Wire Line
 Connection ~ 1450 3500
 Wire Wire Line
 	1450 3500 1500 3500
+$Comp
+L Connector:TestPoint TP21
+U 1 1 602EC0DF
+P 1500 6000
+F 0 "TP21" H 1558 6118 50  0000 L CNN
+F 1 "TestPoint" H 1558 6027 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 1700 6000 50  0001 C CNN
+F 3 "~" H 1700 6000 50  0001 C CNN
+	1    1500 6000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1500 6000 1500 6050
+Wire Wire Line
+	1500 6050 1950 6050
+Connection ~ 1950 6050
+Wire Wire Line
+	1950 6050 1950 5950
+$Comp
+L Connector:TestPoint TP22
+U 1 1 602EDF87
+P 2200 1800
+F 0 "TP22" H 2258 1918 50  0000 L CNN
+F 1 "TestPoint" H 2258 1827 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 2400 1800 50  0001 C CNN
+F 3 "~" H 2400 1800 50  0001 C CNN
+	1    2200 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1600 1850 2200 1850
+Wire Wire Line
+	2200 1850 2200 1800
+Connection ~ 1600 1850
 $EndSCHEMATC

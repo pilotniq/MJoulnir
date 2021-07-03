@@ -50,7 +50,7 @@ Wire Wire Line
 Wire Wire Line
 	5800 1900 5800 1950
 Wire Wire Line
-	5600 1900 5800 1900
+	5600 1900 5700 1900
 $Comp
 L power:+12V #PWR012
 U 1 1 60244E94
@@ -65,7 +65,7 @@ F 3 "" H 6800 1800 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	3900 3700 3950 3700
+	3650 3700 3750 3700
 $Comp
 L Device:R R2
 U 1 1 6025E03D
@@ -99,20 +99,20 @@ Wire Wire Line
 $Comp
 L power:GND #PWR03
 U 1 1 6025E05C
-P 4800 4600
+P 4800 5000
 AR Path="/6025E05C" Ref="#PWR03"  Part="1" 
 AR Path="/602353FF/6025E05C" Ref="#PWR?"  Part="1" 
-F 0 "#PWR03" H 4800 4350 50  0001 C CNN
-F 1 "GND" H 4805 4427 50  0000 C CNN
-F 2 "" H 4800 4600 50  0001 C CNN
-F 3 "" H 4800 4600 50  0001 C CNN
-	1    4800 4600
+F 0 "#PWR03" H 4800 4750 50  0001 C CNN
+F 1 "GND" H 4805 4827 50  0000 C CNN
+F 2 "" H 4800 5000 50  0001 C CNN
+F 3 "" H 4800 5000 50  0001 C CNN
+	1    4800 5000
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4800 4600 4800 4550
+	4800 5000 4800 4900
 Wire Wire Line
-	4500 4350 4250 4350
+	4500 4350 4450 4350
 $Comp
 L 74xGxx:74AHC1G14 U1
 U 1 1 6025E065
@@ -277,7 +277,7 @@ U 1 1 618ECB40
 P 7850 5250
 F 0 "U2" H 7850 5617 50  0000 C CNN
 F 1 "MCP602" H 7850 5526 50  0000 C CNN
-F 2 "Package_SO:MSOP-8_3x3mm_P0.65mm" H 7850 5250 50  0001 C CNN
+F 2 "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" H 7850 5250 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21314g.pdf" H 7850 5250 50  0001 C CNN
 	1    7850 5250
 	1    0    0    -1  
@@ -388,28 +388,28 @@ F 3 "" H 9200 6150 50  0001 C CNN
 $EndComp
 Text Label 9700 5250 0    50   ~ 0
 2.2V
-Text Label 9700 5700 0    50   ~ 0
+Text Label 9800 5700 0    50   ~ 0
 1.4V
 Wire Wire Line
 	9200 4900 9200 4800
 Wire Wire Line
 	9200 5200 9200 5250
 Wire Wire Line
-	9200 5250 9700 5250
+	9200 5250 9650 5250
 Connection ~ 9200 5250
 Wire Wire Line
 	9200 5250 9200 5300
 Wire Wire Line
 	9200 5600 9200 5700
 Wire Wire Line
-	9700 5700 9200 5700
+	9800 5700 9700 5700
 Connection ~ 9200 5700
 Wire Wire Line
 	9200 5700 9200 5750
 Wire Wire Line
 	9200 6050 9200 6150
 Wire Wire Line
-	7550 6150 7450 6150
+	7550 6150 7500 6150
 Wire Wire Line
 	7550 5350 7450 5350
 Text Label 7350 5150 2    50   ~ 0
@@ -417,7 +417,7 @@ Text Label 7350 5150 2    50   ~ 0
 Text Label 7300 5950 2    50   ~ 0
 1.4V
 Wire Wire Line
-	8150 6050 8300 6050
+	8150 6050 8200 6050
 $Comp
 L Connector_Generic:Conn_01x03 J1
 U 1 1 61919ECA
@@ -455,7 +455,7 @@ Wire Wire Line
 Text Label 1900 3500 0    50   ~ 0
 PLUG_PILOT
 Wire Wire Line
-	5600 5650 5450 5650
+	5600 5650 5550 5650
 Connection ~ 5600 5650
 Text Label 5450 5650 2    50   ~ 0
 PLUG_PROXIMITY
@@ -466,7 +466,7 @@ PLUG_PROXIMITY
 Wire Wire Line
 	7300 5950 7550 5950
 Wire Wire Line
-	8150 5250 8300 5250
+	8150 5250 8200 5250
 $Comp
 L Device:C C3
 U 1 1 61931F7F
@@ -524,8 +524,6 @@ Wire Wire Line
 Wire Wire Line
 	7150 6150 7050 6150
 Wire Wire Line
-	6700 1900 6800 1900
-Wire Wire Line
 	6800 1900 6800 1800
 $Comp
 L Connector_Generic:Conn_01x04 J2
@@ -560,9 +558,7 @@ Text Label 2050 1550 0    50   ~ 0
 13V8_FROM_CHARGER
 Text Label 5600 1900 2    50   ~ 0
 13V8_FROM_CHARGER
-Wire Wire Line
-	5800 2300 6100 2300
-Text Label 6100 2300 0    50   ~ 0
+Text Label 6250 2300 0    50   ~ 0
 CHARGER_POWER_SENSE
 $Comp
 L Connector_Generic:Conn_01x04 J3
@@ -660,7 +656,7 @@ $EndComp
 Wire Wire Line
 	5350 3700 5350 3750
 Wire Wire Line
-	4800 3700 5350 3700
+	4800 3700 5050 3700
 $Comp
 L power:GND #PWR04
 U 1 1 6197F3D9
@@ -679,7 +675,7 @@ Wire Wire Line
 Wire Wire Line
 	5350 4050 5350 4100
 Wire Wire Line
-	5750 4100 5350 4100
+	5750 4100 5650 4100
 Connection ~ 5350 4100
 Wire Wire Line
 	5350 4100 5350 4200
@@ -690,16 +686,16 @@ Pilot:\nVoltage on Pilot will be 9V when vehicle connected,  6V when ready.\nMin
 Wire Wire Line
 	4350 3700 4800 3700
 Wire Wire Line
-	6300 4100 6400 4100
+	6300 4100 6350 4100
 Text Label 6400 4100 0    50   ~ 0
 PILOT_OUT
 Text Label 9450 2700 2    50   ~ 0
 PILOT_OUT
 Text Label 9450 2400 2    50   ~ 0
 PILOT_EV_CHARGE
-Text Label 4250 4350 2    50   ~ 0
+Text Label 3700 4350 2    50   ~ 0
 PILOT_EV_CHARGE
-Text Label 3900 3700 2    50   ~ 0
+Text Label 3650 3700 2    50   ~ 0
 PLUG_PILOT
 $Comp
 L Connector_Generic:Conn_01x08 J4
@@ -720,8 +716,6 @@ Wire Wire Line
 	9700 2500 9450 2500
 Wire Wire Line
 	9700 2400 9450 2400
-Wire Wire Line
-	9700 2300 9450 2300
 Wire Wire Line
 	9700 2100 9650 2100
 Wire Wire Line
@@ -865,10 +859,354 @@ L Erland's:Q-FET-N-SSM3K36MFV Q1
 U 1 1 61FE1E97
 P 4700 4350
 F 0 "Q1" H 4905 4396 50  0000 L CNN
-F 1 "Q-FET-N-SSM3K36MFV" H 4905 4305 50  0000 L CNN
+F 1 "Q-FET-N-SSM3K36MFV" H 4905 4305 50  0001 L CNN
 F 2 "Package_TO_SOT_SMD:SOT-723" H 4900 4275 50  0001 L CIN
 F 3 "https://www.fairchildsemi.com/datasheets/BS/BSS138.pdf" H 4700 4350 50  0001 L CNN
 	1    4700 4350
 	1    0    0    -1  
 $EndComp
+$Comp
+L Connector:TestPoint TP16
+U 1 1 60328243
+P 9650 5100
+F 0 "TP16" H 9708 5218 50  0000 L CNN
+F 1 "TestPoint" H 9708 5127 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 9850 5100 50  0001 C CNN
+F 3 "~" H 9850 5100 50  0001 C CNN
+	1    9650 5100
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:TestPoint TP17
+U 1 1 6032898D
+P 9700 5550
+F 0 "TP17" H 9758 5668 50  0000 L CNN
+F 1 "TestPoint" H 9758 5577 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 9900 5550 50  0001 C CNN
+F 3 "~" H 9900 5550 50  0001 C CNN
+	1    9700 5550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9650 5100 9650 5250
+Connection ~ 9650 5250
+Wire Wire Line
+	9650 5250 9700 5250
+Wire Wire Line
+	9700 5550 9700 5700
+Connection ~ 9700 5700
+Wire Wire Line
+	9700 5700 9200 5700
+$Comp
+L Connector:TestPoint TP12
+U 1 1 603310B8
+P 8200 5100
+F 0 "TP12" H 8258 5218 50  0000 L CNN
+F 1 "TestPoint" H 8258 5127 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 8400 5100 50  0001 C CNN
+F 3 "~" H 8400 5100 50  0001 C CNN
+	1    8200 5100
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	8200 5100 8200 5250
+Connection ~ 8200 5250
+Wire Wire Line
+	8200 5250 8300 5250
+$Comp
+L Connector:TestPoint TP13
+U 1 1 603342B0
+P 8200 5900
+F 0 "TP13" H 8258 6018 50  0000 L CNN
+F 1 "TestPoint" H 8258 5927 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 8400 5900 50  0001 C CNN
+F 3 "~" H 8400 5900 50  0001 C CNN
+	1    8200 5900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	8200 5900 8200 6050
+Connection ~ 8200 6050
+Wire Wire Line
+	8200 6050 8300 6050
+$Comp
+L Connector:TestPoint TP5
+U 1 1 6033750D
+P 5550 5500
+F 0 "TP5" H 5608 5618 50  0000 L CNN
+F 1 "TestPoint" H 5608 5527 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 5750 5500 50  0001 C CNN
+F 3 "~" H 5750 5500 50  0001 C CNN
+	1    5550 5500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5550 5500 5550 5650
+Connection ~ 5550 5650
+Wire Wire Line
+	5550 5650 5450 5650
+$Comp
+L Connector:TestPoint TP10
+U 1 1 6033AFCB
+P 7450 5550
+F 0 "TP10" H 7392 5576 50  0000 R CNN
+F 1 "TestPoint" H 7392 5667 50  0000 R CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 7650 5550 50  0001 C CNN
+F 3 "~" H 7650 5550 50  0001 C CNN
+	1    7450 5550
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	7450 5550 7450 5350
+Connection ~ 7450 5350
+$Comp
+L Connector:TestPoint TP11
+U 1 1 6033E87D
+P 7500 6300
+F 0 "TP11" H 7442 6326 50  0000 R CNN
+F 1 "TestPoint" H 7442 6417 50  0000 R CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 7700 6300 50  0001 C CNN
+F 3 "~" H 7700 6300 50  0001 C CNN
+	1    7500 6300
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	7500 6300 7500 6150
+Connection ~ 7500 6150
+Wire Wire Line
+	7500 6150 7450 6150
+$Comp
+L Connector:TestPoint TP4
+U 1 1 603450F7
+P 5050 3650
+F 0 "TP4" H 5108 3768 50  0000 L CNN
+F 1 "TestPoint" H 5108 3677 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 5250 3650 50  0001 C CNN
+F 3 "~" H 5250 3650 50  0001 C CNN
+	1    5050 3650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5050 3650 5050 3700
+Connection ~ 5050 3700
+Wire Wire Line
+	5050 3700 5350 3700
+$Comp
+L Connector:TestPoint TP1
+U 1 1 6034B9CC
+P 3750 3600
+F 0 "TP1" H 3808 3718 50  0000 L CNN
+F 1 "TestPoint" H 3808 3627 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 3950 3600 50  0001 C CNN
+F 3 "~" H 3950 3600 50  0001 C CNN
+	1    3750 3600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3750 3600 3750 3700
+Connection ~ 3750 3700
+Wire Wire Line
+	3750 3700 3950 3700
+$Comp
+L Device:R R13
+U 1 1 60352729
+P 4250 4350
+AR Path="/60352729" Ref="R13"  Part="1" 
+AR Path="/602353FF/60352729" Ref="R?"  Part="1" 
+F 0 "R13" H 4180 4304 50  0000 R CNN
+F 1 "3.3k" H 4180 4395 50  0000 R CNN
+F 2 "Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder" V 4180 4350 50  0001 C CNN
+F 3 "~" H 4250 4350 50  0001 C CNN
+	1    4250 4350
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	4100 4350 4000 4350
+$Comp
+L Device:R R14
+U 1 1 6035D527
+P 4450 4700
+AR Path="/6035D527" Ref="R14"  Part="1" 
+AR Path="/602353FF/6035D527" Ref="R?"  Part="1" 
+F 0 "R14" H 4380 4654 50  0000 R CNN
+F 1 "100k" H 4380 4745 50  0000 R CNN
+F 2 "Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder" V 4380 4700 50  0001 C CNN
+F 3 "~" H 4450 4700 50  0001 C CNN
+	1    4450 4700
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4450 4550 4450 4350
+Connection ~ 4450 4350
+Wire Wire Line
+	4450 4350 4400 4350
+Wire Wire Line
+	4450 4850 4450 4900
+Wire Wire Line
+	4450 4900 4800 4900
+Connection ~ 4800 4900
+Wire Wire Line
+	4800 4900 4800 4550
+$Comp
+L Connector:TestPoint TP3
+U 1 1 60369957
+P 4500 4200
+F 0 "TP3" H 4558 4318 50  0000 L CNN
+F 1 "TestPoint" H 4558 4227 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 4700 4200 50  0001 C CNN
+F 3 "~" H 4700 4200 50  0001 C CNN
+	1    4500 4200
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4500 4200 4500 4350
+Connection ~ 4500 4350
+$Comp
+L Connector:TestPoint TP2
+U 1 1 6036DE73
+P 4000 4250
+F 0 "TP2" H 4058 4368 50  0000 L CNN
+F 1 "TestPoint" H 4058 4277 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 4200 4250 50  0001 C CNN
+F 3 "~" H 4200 4250 50  0001 C CNN
+	1    4000 4250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 4250 4000 4350
+Connection ~ 4000 4350
+Wire Wire Line
+	4000 4350 3700 4350
+$Comp
+L Connector:TestPoint TP6
+U 1 1 60376636
+P 5650 3450
+F 0 "TP6" H 5708 3568 50  0000 L CNN
+F 1 "TestPoint" H 5708 3477 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 5850 3450 50  0001 C CNN
+F 3 "~" H 5850 3450 50  0001 C CNN
+	1    5650 3450
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5650 3450 5650 4100
+Connection ~ 5650 4100
+Wire Wire Line
+	5650 4100 5350 4100
+$Comp
+L Connector:TestPoint TP9
+U 1 1 6037B4E7
+P 6350 4150
+F 0 "TP9" H 6292 4176 50  0000 R CNN
+F 1 "TestPoint" H 6292 4267 50  0000 R CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 6550 4150 50  0001 C CNN
+F 3 "~" H 6550 4150 50  0001 C CNN
+	1    6350 4150
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	6350 4150 6350 4100
+Connection ~ 6350 4100
+Wire Wire Line
+	6350 4100 6400 4100
+$Comp
+L Connector:TestPoint TP7
+U 1 1 603804AD
+P 5700 1650
+F 0 "TP7" H 5758 1768 50  0000 L CNN
+F 1 "TestPoint" H 5758 1677 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 5900 1650 50  0001 C CNN
+F 3 "~" H 5900 1650 50  0001 C CNN
+	1    5700 1650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5700 1650 5700 1900
+Connection ~ 5700 1900
+Wire Wire Line
+	5700 1900 5800 1900
+$Comp
+L Connector:TestPoint TP8
+U 1 1 603858A0
+P 6100 2150
+F 0 "TP8" H 6158 2268 50  0000 L CNN
+F 1 "TestPoint" H 6158 2177 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 6300 2150 50  0001 C CNN
+F 3 "~" H 6300 2150 50  0001 C CNN
+	1    6100 2150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5800 2300 6100 2300
+Wire Wire Line
+	6100 2150 6100 2300
+Connection ~ 6100 2300
+Wire Wire Line
+	6100 2300 6250 2300
+$Comp
+L Connector:TestPoint TP15
+U 1 1 6038F4DB
+P 9100 2950
+F 0 "TP15" H 9042 2976 50  0000 R CNN
+F 1 "TestPoint" H 9042 3067 50  0000 R CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 9300 2950 50  0001 C CNN
+F 3 "~" H 9300 2950 50  0001 C CNN
+	1    9100 2950
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	9650 2800 9100 2800
+Wire Wire Line
+	9100 2800 9100 2950
+Connection ~ 9650 2800
+$Comp
+L Connector:TestPoint TP14
+U 1 1 603951B8
+P 9100 1900
+F 0 "TP14" H 9158 2018 50  0000 L CNN
+F 1 "TestPoint" H 9158 1927 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 9300 1900 50  0001 C CNN
+F 3 "~" H 9300 1900 50  0001 C CNN
+	1    9100 1900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9650 2100 9100 2100
+Wire Wire Line
+	9100 2100 9100 1900
+Connection ~ 9650 2100
+$Comp
+L Connector:TestPoint TP18
+U 1 1 606D4D79
+P 2200 1900
+F 0 "TP18" H 2142 1926 50  0000 R CNN
+F 1 "TestPoint" H 2142 2017 50  0000 R CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 2400 1900 50  0001 C CNN
+F 3 "~" H 2400 1900 50  0001 C CNN
+	1    2200 1900
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	1900 1750 2200 1750
+Wire Wire Line
+	2200 1750 2200 1900
+Connection ~ 1900 1750
+$Comp
+L Connector:TestPoint TP19
+U 1 1 606E0272
+P 7050 1800
+F 0 "TP19" H 7108 1918 50  0000 L CNN
+F 1 "TestPoint" H 7108 1827 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Loop_D2.50mm_Drill1.0mm_LowProfile" H 7250 1800 50  0001 C CNN
+F 3 "~" H 7250 1800 50  0001 C CNN
+	1    7050 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7050 1900 7050 1800
+Wire Wire Line
+	6700 1900 6800 1900
+Connection ~ 6800 1900
+Wire Wire Line
+	6800 1900 7050 1900
 $EndSCHEMATC

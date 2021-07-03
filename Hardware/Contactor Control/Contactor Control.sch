@@ -1,5 +1,5 @@
 EESchema Schematic File Version 4
-LIBS:Contractor Control-cache
+LIBS:Contactor Control-cache
 EELAYER 30 0
 EELAYER END
 $Descr A4 11693 8268
@@ -362,4 +362,6 @@ F 3 "" H 3300 2050 50  0001 C CNN
 	1    3300 2050
 	1    0    0    -1  
 $EndComp
+Text Notes 5800 2900 0    50   ~ 0
+Problems with transistor failure. 2021-01-24.\nHypothesis: \n\nFirst time:\nground for control signal and 12V not connected when testing, causing too high gate voltage?\n\nSecond time:\npins 1 & 2 to contactor shorted when troublshooting, causing too high current through transistor. \n\nCould protect against second case with a resistor? Max current is 6.7A, resistance of 1.8 Ohm would do it. Unclear if it would prevent contactor operation.\n\nAlso, replaced R2 with 30 kOhm.\n\nReplace the transistor again for now.\n
 $EndSCHEMATC
