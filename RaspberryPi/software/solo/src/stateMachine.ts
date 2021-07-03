@@ -371,14 +371,14 @@ class ArmedState extends MJoulnirState
 			console.log( "Armed state: Charger can charge, soc is " + (min_soc * 100).toFixed(0) + 
 				"-" + (soc * 100).toFixed(0) + " %");
 
-			if( soc < 0.79 ) // just while testing balancing, raise to 0.7?
+			if( soc < (this.model.charger.target_soc - 0.05) ) // just while testing balancing, raise to 0.7?
 			{
 				// charge to 80% SOC, max 10 A from wall.
 				// 
 				// this.stateMachine.chargeState.setParameters( 0.8, ArmedState.MAX_WALL_CURRENT );
 				this.transitionTo( this.stateMachine.chargeState )
 			}
-			else if( !this.model.battery.isBalanced() && 
+			else if( this.model.battery.isBalanced() && 
 			         this.model.battery.getMaxTemperature()! <= 24 )
 				this.transitionTo( this.stateMachine.balancingState )
 		}
@@ -545,6 +545,8 @@ class ChargeState extends MJoulnirState
 	prev_temperature?: number;
 	temperature_change = 0;
 	temperature_derating = 0;
+	latest_max_wall_current = 0;
+	latest_target_soc = 0;
 
 	constructor(machine: ElectricDrivetrainStateMachine)
 	{
@@ -590,6 +592,7 @@ class ChargeState extends MJoulnirState
 		this.stateMachine.model.charger.onChanged( this.boundChargerListener );
 		this.stateMachine.model.battery.onChanged( this.boundBatteryListener )
 
+		console.log( "ChargeState.enter(): charger target soc = " + this.charger.target_soc!)
 		// this.target_soc = target_soc;
 		assert( this.charger.target_soc! >= 0 );
 		assert( this.charger.target_soc! <= 1.0 );
@@ -598,6 +601,8 @@ class ChargeState extends MJoulnirState
 		this.charging_current = 0;
 		this.at_max_current = false;
 		this.resistances_estimated = false
+		this.latest_max_wall_current = this.model.charger.max_wall_current
+		this.latest_target_soc = this.model.charger.target_soc
 
 		// TODO: ramp up charging currenet
 		this.target_max_cell_voltage = BoatModel.Battery.estimateCellVoltageFromSOC( this.charger.target_soc! );
@@ -682,7 +687,7 @@ class ChargeState extends MJoulnirState
 
 		clearTimeout( this.pauseTimer! )
 		this.pauseTimer = undefined
-		
+
 		console.log( "Turning off charger" );
 
 		this.charger.setChargingParameters( 0, 0, false );
@@ -724,7 +729,8 @@ class ChargeState extends MJoulnirState
 		this.target_pack_voltage = this.battery.getTotalVoltage()! + 
 			voltageDiff * 18;
 
-		assert( this.target_pack_voltage < 73 );
+		// TODO: Increase to 75.6
+		assert( this.target_pack_voltage <= 75.6 );
 
 		if( !this.current_limiting && (voltageDiff <= 0.002) )
 		{
@@ -853,7 +859,7 @@ class ChargeState extends MJoulnirState
 			" at max current: " + this.at_max_current +
 			" current_limiting: " + this.current_limiting );
 
-		assert( maxChargingCurrent < 40 );
+		// assert( maxChargingCurrent < 40 );
 
 		// record cell voltages before charging, so that we can estimate the 
 		// internal resistance of the cell groups
@@ -877,6 +883,15 @@ class ChargeState extends MJoulnirState
 		{
 			console.log( "Aborting charging due to charger" );
 			this.abort();
+		}
+		// if charger settings (target SOC or max wall current) changed, call
+		// recalculateCharging 
+		if( (charger.max_wall_current != this.latest_max_wall_current) ||
+		    (charger.target_soc != this.latest_target_soc))
+		{
+			this.latest_max_wall_current = this.model.charger.max_wall_current
+			this.latest_target_soc = this.model.charger.target_soc
+			this.recalculateCharging()
 		}
 	}
 

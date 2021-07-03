@@ -8,6 +8,7 @@
             {
                 charger_detected = document.getElementById("charger_detected")
                 charger_powered = document.getElementById("charger_powered")
+                throttle = document.getElementById("throttle")
 
                 // read state from backend and set UI elements
                 fetch("http:/api/v1/charger/detected")
@@ -37,6 +38,17 @@
                          'body': JSON.stringify( { 'powered': event.currentTarget.checked } )
                         })
                 })
+
+                throttle.addEventListener("input", (event) =>
+                {
+                    console.log( "Throttle: " + throttle.value + "%")
+                    fetch("http:/api/v1/vesc/throttle",
+                        {'method': 'PUT',
+                        'headers': {'Accept': 'application/json',
+                            'Content-Type': 'application/json' }, 
+                         'body': JSON.stringify( { 'throttle': throttle.value } )
+                    })
+                })
             }
         </script>
     </head>
@@ -47,5 +59,7 @@
         <label for="charger_detected">Detected</label>
         <input type="checkbox" id="charger_powered" name="charger_powered">
         <label for="charger_powered">Powered</label>
+        <input type="range" min="-100" max="100" value="0" id="throttle">
+        <label for="throttle">Throttle</label>
     </body>
 </html>

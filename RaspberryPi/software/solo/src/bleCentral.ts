@@ -19,7 +19,8 @@ const UUID_CHARACTERISTIC_BATTERY_IMBALANCE = '71498776a04c4800a1d925ebc70b0003'
 const UUID_CHARACTERISTIC_TEMPERATURES = '71498776a04c4800a1d925ebc70b0004';
 const UUID_CHARACTERISTIC_POWER = '71498776a04c4800a1d925ebc70b0005';
 const UUID_CHARACTERISTIC_CHARGER = '71498776a04c4800a1d925ebc70b0006';
-const UUID_CHARACTERISTIC_CHARGER_SETTINGS = '71498776a04c4800a1d925ebc70b0007';
+const UUID_CHARACTERISTIC_CHARGER_MAX_WALL_CURRENT = '71498776a04c4800a1d925ebc70b0007';
+const UUID_CHARACTERISTIC_CHARGER_TARGET_SOC = '71498776a04c4800a1d925ebc70b0008';
 
 let blenoOn = false;
 let started = false;
@@ -417,43 +418,78 @@ class ChargerStateCharacteristic extends BoatModelCharacteristic
 	}
 }
 
-class ChargerSettingsCharacteristic extends WritableBoatModelCharacteristic
+class ChargerMaxWallCurrentCharacteristic extends WritableBoatModelCharacteristic
 {
 	//
 	// byte 0: max wall current * 10
-	// byte 1: target state of charge (%)
 	//
 	constructor(model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine) {
-		super( model, model.state, UUID_CHARACTERISTIC_CHARGER_SETTINGS, "ChargerSettings" );
+		super( model, model.state, UUID_CHARACTERISTIC_CHARGER_MAX_WALL_CURRENT, "ChargerMaxWallCurrent" );
 
 		this.stateMachine = stateMachine
-		this.value = Buffer.alloc(2);
+		this.value = Buffer.alloc(1);
 		this.buildValue()
-		this.model.state.onChanged( this.updateValue.bind(this) );
+		this.model.charger.onChanged( this.updateValue.bind(this) );
 	}
 
 	onWriteRequest(data: Buffer, offset: number, without_response: boolean, 
 		callback: (error_code: number) => void )
 	{
 		const max_wall_current = data[0] / 10
-		const soc = data[1] / 100
+		// const soc = data[1] / 100
 
-		console.log( "BoatModelCharacteristic.onWriteRequest")
+		console.log( "ChargerMaxWallCurrentCharacteristic.onWriteRequest")
 
-		this.model.charger.setSettings( max_wall_current, soc )
+		// this.model.charger.setSettings( max_wall_current, soc )
+		this.model.charger.setMaxWallCurrent( max_wall_current )
 		callback(Bleno.Characteristic.RESULT_SUCCESS);
 	}
 
 	buildValue()
 	{
 		assert( this.model.charger.max_wall_current <= 25.5 )
+		assert( this.model.charger.max_wall_current >= 0 )
 		this.value[0] = Math.round(this.model.charger.max_wall_current * 10)
-
+/*
 		assert( this.model.charger.target_soc >=0 )
 		assert( this.model.charger.target_soc <=1 )
 		this.value[1] = Math.round(this.model.charger.target_soc * 100)
+		*/
+	}
+}
+
+class ChargerTargetSOCCharacteristic extends WritableBoatModelCharacteristic
+{
+	//
+	// byte 0: target state of charge (0-100%)
+	//
+	constructor(model: BoatModel.BoatModel, stateMachine: ElectricDrivetrainStateMachine) {
+		super( model, model.state, UUID_CHARACTERISTIC_CHARGER_TARGET_SOC, "ChargerTargetSOC" );
+
+		this.stateMachine = stateMachine
+		this.value = Buffer.alloc(1);
+		this.buildValue()
+		this.model.charger.onChanged( this.updateValue.bind(this) );
 	}
 
+	onWriteRequest(data: Buffer, offset: number, without_response: boolean, 
+		callback: (error_code: number) => void )
+	{
+		const soc = data[0] / 100.0
+
+		console.log( "ChargerTargetSOCCharacteristic.onWriteRequest")
+
+		// this.model.charger.setSettings( max_wall_current, soc )
+		this.model.charger.setTargetSOC( soc )
+		callback(Bleno.Characteristic.RESULT_SUCCESS);
+	}
+
+	buildValue()
+	{
+		assert( this.model.charger.target_soc >=0 )
+		assert( this.model.charger.target_soc <=1 )
+		this.value[0] = Math.round(this.model.charger.target_soc * 100)
+	}
 }
 
 class ElectricDrivetrainService extends Bleno.PrimaryService {
@@ -468,7 +504,8 @@ class ElectricDrivetrainService extends Bleno.PrimaryService {
 				new TemperaturesCharacteristic(model),
 				new PowerCharacteristic(model),
 				new ChargerStateCharacteristic(model),
-				new ChargerSettingsCharacteristic(model, stateMachine)
+				new ChargerMaxWallCurrentCharacteristic(model, stateMachine),
+				new ChargerTargetSOCCharacteristic(model, stateMachine)
       	      ]
   	  });
 	}
