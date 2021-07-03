@@ -65,7 +65,13 @@ class MainStatusViewController: UIViewController, SetModel {
     bluetoothStateWatcher = model.$bluetoothState.sink { newState in
       print( "bluetooth sink: state is \(String(describing: newState))" )
       self.bluetoothStateLabel.text = "Bluetooth: \(String(describing: newState))"
+/* Do this in tab bar controller
+      if( newState != .following ) {
+        // self.dismiss(animated: true)
+        self.onDoneBlock()
       }
+ */
+    }
   }
 
   override func viewDidDisappear(_ animated: Bool) {

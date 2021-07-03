@@ -11,8 +11,10 @@ import Combine
 
 class TabBarController: UITabBarController, SetModel {
 
+  // var onDoneBlock: () -> Void = {}
+
   var model: Model?
-  var bluetoothStateWatcher: AnyCancellable?
+  // var bluetoothStateWatcher: AnyCancellable?
   
   func setModel(model: Model) {
     self.model = model
@@ -20,7 +22,6 @@ class TabBarController: UITabBarController, SetModel {
       subPanel.setModel(model: self.model!)
     }
   }
-
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -31,6 +32,7 @@ class TabBarController: UITabBarController, SetModel {
     }
 
   override func viewWillAppear(_ animated: Bool) {
+    /*
     bluetoothStateWatcher = model!.$bluetoothState.sink { newState in
       print( "TabBarController: bluetooth sink: state is \(String(describing: newState))" )
       // self.bluetoothStateLabel.text = "Bluetooth: \(String(describing: newState))"
@@ -38,13 +40,19 @@ class TabBarController: UITabBarController, SetModel {
       {
         // self.performSegue(withIdentifier: "scanningSegue", sender: nil);
         // self.dismiss(animated:true)
+        // bluetoothStateWatcher?.cancel()
+        self.onDoneBlock()
       }
     }
+ */
   }
-
+/*
   override func viewWillDisappear(_ animated: Bool) {
     bluetoothStateWatcher?.cancel()
   }
+*/
+
+
 /*
   override func viewDidAppear(_ animated: Bool) {
     <#code#>
