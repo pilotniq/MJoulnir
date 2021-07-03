@@ -7,11 +7,13 @@
 //
 
 import UIKit
+import Combine
 
 class TabBarController: UITabBarController, SetModel {
 
   var model: Model?
-
+  var bluetoothStateWatcher: AnyCancellable?
+  
   func setModel(model: Model) {
     self.model = model
     if let subPanel = self.viewControllers![0] as? SetModel {
@@ -24,7 +26,24 @@ class TabBarController: UITabBarController, SetModel {
         super.viewDidLoad()
 
         // Do any additional setup after loading the view.
+        // listen to Bluetooth connection state, transition back to splash screen if connection is lost
+
     }
+
+  override func viewWillAppear(_ animated: Bool) {
+    bluetoothStateWatcher = model!.$bluetoothState.sink { newState in
+      print( "TabBarController: bluetooth sink: state is \(String(describing: newState))" )
+      // self.bluetoothStateLabel.text = "Bluetooth: \(String(describing: newState))"
+      if(newState == .scanning)
+      {
+        self.performSegue(withIdentifier: "scanningSegue", sender: nil);
+      }
+    }
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    bluetoothStateWatcher?.cancel()
+  }
 /*
   override func viewDidAppear(_ animated: Bool) {
     <#code#>

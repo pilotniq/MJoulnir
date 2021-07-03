@@ -32,6 +32,7 @@ class ChargingViewController: UIViewController, SetModel {
   var chargerStateSubscription: AnyCancellable?
   var batterySubscription: AnyCancellable?
   var temperaturesSubscription: AnyCancellable?
+  var chargerSettingsSubscription: AnyCancellable?
 
   override func viewDidLoad() {
         super.viewDidLoad()
@@ -48,14 +49,20 @@ class ChargingViewController: UIViewController, SetModel {
     /* self.batterySubscription = model?.$batteryLevel.sink(receiveValue:self.updateBattery) */
     temperaturesSubscription = model?.$temperatures.sink { newTemperatures in self.updateTemperatures(temperaturesOpt: newTemperatures) }
 
+    chargerSettingsSubscription = model?.$chargerSettings.sink { newSettings in self.updateChargerSettings(chargerSettingsOpt: newSettings) }
+
     updateTemperatures(temperaturesOpt: model?.temperatures)
     updateBattery(batteryLevelOpt: model?.batteryLevel)
     updateChargerState(chargerStateOpt: model?.chargerState)
+    updateChargerSettings(chargerSettingsOpt: model?.chargerSettings)
  //    targetLevelSlider.setValue(model!.chargerState., animated: <#T##Bool#>)
   }
 
   override func viewWillDisappear(_ animated: Bool) {
     chargerStateSubscription?.cancel()
+    temperaturesSubscription?.cancel()
+    chargerSettingsSubscription?.cancel()
+    batterySubscription?.cancel()
   }
 
   func updateTemperatures( temperaturesOpt: Temperatures? )
@@ -85,10 +92,10 @@ class ChargingViewController: UIViewController, SetModel {
     {
       let nf = NumberFormatter()
       nf.maximumFractionDigits = 1
+      nf.minimumFractionDigits = 1
       nf.numberStyle = .decimal
       self.voltageLabel.text = "\(nf.string( from: NSNumber(value: chargerState.outputVoltage))!) V"
       self.currentLabel.text = "\(nf.string( from: NSNumber(value: chargerState.outputCurrent))!) A"
-
 
       let power = chargerState.outputVoltage * chargerState.outputCurrent
 
@@ -99,9 +106,25 @@ class ChargingViewController: UIViewController, SetModel {
       self.currentLabel.text = "\(nf.string( from: NSNumber(value: chargerState.ackChargeWh))!) Wh"
  */
     }
-
-
   }
+
+  func updateChargerSettings( chargerSettingsOpt: ChargerSettings?)
+  {
+    if let chargerSettings = chargerSettingsOpt
+    {
+      let nf = NumberFormatter()
+      nf.maximumFractionDigits = 0
+      nf.numberStyle = .decimal
+
+      self.maxWallCurrentSlider.setValue(Float(chargerSettings.max_wall_current), animated: false)
+      self.maxWallCurrentLabel.text = "\(nf.string(from: NSNumber(value: chargerSettings.max_wall_current))!) A (\(nf.string(from: NSNumber(value: chargerSettings.max_wall_current * 230))!) W)"
+      self.targetLevelSlider.setValue(Float(chargerSettings.target_soc), animated: false)
+      var targetSoc = (chargerSettings.target_soc * 100)
+      targetSoc.round()
+      self.targetLevelLabel.text = "\(nf.string(from: NSNumber(value: targetSoc))!)%"
+    }
+  }
+
 
     /*
     // MARK: - Navigation
@@ -112,9 +135,41 @@ class ChargingViewController: UIViewController, SetModel {
         // Pass the selected object to the new view controller.
     }
     */
-  @IBAction func setTargetLevel(_ sender: Any) {
+  @IBAction func setTargetLevel(_ sender: UISlider) {
+    let nf = NumberFormatter()
+    nf.maximumFractionDigits = 0
+    nf.numberStyle = .decimal
+
+    // snap in increments of 0.1 Amps
+    let soc = round(sender.value * 100) / 100
+    sender.value = soc;
+
+    // nf.string( from: NSNumber(value: -newPower!.power))
+    changedTargetLevelLabel.text = "\(nf.string( from: NSNumber(value: soc * 100))!)%"
+    // print("UISlider: \(sender.value)")
+  }
+  @IBAction func maxWallCurrentSliderChanged2(_ sender: UISlider, forEvent event: UIEvent)
+  {
+    /*
+    guard let current = sender.value else {
+      print( "maxWallCurrentSliderChanged2: slider value was not set!?")
+      return
+    }
+ */
+    let nf = NumberFormatter()
+    nf.maximumFractionDigits = 0
+    nf.numberStyle = .decimal
+
+    // snap in increments of 0.1 Amps
+    let current = round(sender.value)
+    sender.value = current;
+
+    // nf.string( from: NSNumber(value: -newPower!.power))
+    changedWallCurrentLabel.text = "\(nf.string( from: NSNumber(value: current))!) A (\(nf.string(from: NSNumber(value: current * 230))!)) W"
+    // print("UISlider: \(sender.value)")
   }
   @IBAction func targetLevelSliderChanged() {
+
   }
   @IBAction func maxWallCurrentSliderChangd() {
   }

@@ -52,6 +52,12 @@ struct ChargerState
   var ackChargeWh: Int
 }
 
+struct ChargerSettings
+{
+  var max_wall_current: Double
+  var target_soc: Double
+}
+
 class Model: NSObject, ObservableObject
 {
   enum BluetoothState {
@@ -92,6 +98,7 @@ class Model: NSObject, ObservableObject
   @Published private(set) var power: Power?
   @Published private(set) var batteryLevel: UInt?
   @Published private(set) var chargerState: ChargerState?
+  @Published private(set) var chargerSettings: ChargerSettings?
 
   private var centralManager: CBCentralManager!
   private var locationManager: CLLocationManager!
@@ -107,6 +114,7 @@ class Model: NSObject, ObservableObject
   private var characteristic_power: CBCharacteristic!
   private var characteristic_temperatures: CBCharacteristic!
   private var characteristic_chargerState: CBCharacteristic!
+  private var characteristic_chargerSettings: CBCharacteristic!
 
   override public init()
   {
@@ -243,11 +251,14 @@ extension Model: CBCentralManagerDelegate {
   func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
     print( "Connected" )
     self.bluetoothState = .connected
-    self.mjoulnir.discoverServices([CBUUIDs.BLEMjoulnirService_UUID, CBUUIDs.BLEBatteryService_UUID])
     self.mjoulnir.delegate = self
+    self.mjoulnir.discoverServices([CBUUIDs.BLEMjoulnirService_UUID, CBUUIDs.BLEBatteryService_UUID])
   }
   func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
     print( "Peripheral disconnected, rescanning" )
+    if let e = error {
+      print( "error=" + e.localizedDescription )
+    }
     self.bluetoothState = .scanning
     startScanning()
   }
@@ -313,6 +324,12 @@ extension Model: CBPeripheralDelegate {
 
       case CBUUIDs.BLEMjoulnirCharacteristic_ChargerState_UUID:
         self.characteristic_chargerState = characteristic
+        peripheral.setNotifyValue(true, for: characteristic)
+        peripheral.readValue(for: characteristic)
+        break
+
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerSettings_UUID:
+        self.characteristic_chargerSettings = characteristic
         peripheral.setNotifyValue(true, for: characteristic)
         peripheral.readValue(for: characteristic)
         break
@@ -416,7 +433,7 @@ extension Model: CBPeripheralDelegate {
         let state_chunk = characteristic.value![0]
         let error_chunk = characteristic.value![1]
         let outputVoltage_chunk = characteristic.value!.subdata(in:2..<4)
-        let outputCurrent_chunk = characteristic.value!.subdata(in:4..<5)
+        let outputCurrent_chunk = characteristic.value!.subdata(in:4..<6)
         let ackCharge_chunk = characteristic.value!.subdata(in:6..<8)
 
         let outputVoltageRaw: UInt16 = outputVoltage_chunk.toInteger( endian: .little )
@@ -430,6 +447,15 @@ extension Model: CBPeripheralDelegate {
                                          outputVoltage: Double(outputVoltageRaw) / 256.0,
                                          outputCurrent: Double(outputCurrentRaw) / 256.0,
                                          ackChargeWh: Int(ackCharge))
+        break;
+
+      case CBUUIDs.BLEMjoulnirCharacteristic_ChargerSettings_UUID:
+        // TODO: make resilient to fewer bytes
+        let max_wall_current = Double(characteristic.value![0]) / 10.0
+        let target_soc = Double(characteristic.value![1]) / 100.0
+
+        self.chargerSettings = ChargerSettings(max_wall_current: max_wall_current,
+                                               target_soc: target_soc)
         break;
         
       default:

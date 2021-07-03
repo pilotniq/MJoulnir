@@ -31,6 +31,10 @@ class ArmedViewController: UIViewController, SetModel {
     self.model?.requestStateChange(newState: .Idle)
   }
 
+  @IBAction func charge() {
+    self.model?.requestStateChange(newState: .Charging)
+  }
+  
   func updateChargerState( chargerStateOpt: ChargerState?)
   {
     var description: String;
