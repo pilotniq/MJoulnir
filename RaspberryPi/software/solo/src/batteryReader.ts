@@ -116,12 +116,22 @@ export class TeslaBatteryReader extends events.EventEmitter implements BatteryRe
 
 		return this.batteryPack.readAll()
 			.then( () => {
+				console.log( "BatteryPack.readAll().then" );
+
 				this.retry_count = 0;
 				let moduleIndex = 0;
-
+				
 				const voltagesArray: number[][] = []
 				const temperaturesArray: number[][] = []
-				Object.keys(this.batteryPack.modules).sort().forEach( key => { 
+				Object.keys(this.batteryPack.modules).sort().forEach( key => {
+					let module = this.batteryPack.modules[Number(key)];
+					let cellVoltages = module.cellVoltages;
+					let temperatures = module.temperatures;
+					
+					console.log( "Battery pack " + key );
+					console.log( "cellVoltages=" + cellVoltages );
+					console.log( "temperatures=" + temperatures );
+					
 					if( voltagesArray.length <= moduleIndex )
 						voltagesArray.push( this.batteryPack.modules[Number(key)].cellVoltages );
 					else
@@ -133,6 +143,8 @@ export class TeslaBatteryReader extends events.EventEmitter implements BatteryRe
 						temperaturesArray[moduleIndex] = this.batteryPack.modules[Number(key)].temperatures;
 					moduleIndex++;
 				});
+
+				console.log( "Voltages: " + voltagesArray + ", temps=" + temperaturesArray + ", fault=" + this.batteryPack.hasFault() + ", alert=" + this.batteryPack.hasAlert() + ", update_imbalance=" + this.update_imbalance );
 
 				const data: UpdateData = {
 					voltages: voltagesArray,
