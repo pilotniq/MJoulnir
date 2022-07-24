@@ -175,7 +175,17 @@ class Packet
 							"field": "vq",
 							"byte_count": 4,
 							"scale": 1000,
-							"nextState": "WaitForCRC"}},
+						    "nextState": "WaitForCRC"}},
+			  "GetAppConf_controller_id": { func: Packet.parseByteField,
+							"context": {
+							    "field": "controller_id",
+							    "nextState": "GetAppConf_timeout_msec"}},
+			  "GetAppConf_timeout_msec": { func: Packet.parseMulti,
+						       "context": {
+							   "field": "timeout_msec",
+							   "byte_count": 4,
+							   "nextState": "GetAppConf_unparsed1"
+						       }},
 				"CAN_ID": { func: Packet.parseMulti,
 						"context": {
 							"field": "id",
@@ -202,9 +212,11 @@ class Packet
 			}
 
 	// Types correspond to COMM_PACKET_ID in vesc's datatypes.h
-	static Types = { "GET_VALUES": 4, 
-                         "SET_HANDBRAKE": 10, 
-                         "SET_APPCONF": 0x10, 
+    static Types = { "GET_VALUES": 4,
+		     "SET_DUTY": 5,
+                     "SET_HANDBRAKE": 10,
+                     "SET_APPCONF": 0x10, 
+		     "GET_APPCONF": 0x11,
                          "GET_DECODED_ADC": 0x20,
 			 "SET_MCCONF_TEMP": 0x30,
 			 "COMM_TERMINAL_CMD_SYNC": 0x40,
@@ -587,7 +599,27 @@ class VESC extends EventEmitter
 		return this.ble_txCharacteristic.writeAsync( new Buffer.from([0x02, 0x01, 0x04, 0x40, 0x84, 0x03] ));
 	}
 
-	// for now, assume extended
+    // duty is value -1 ... 1
+    async sendSetDuty( duty )
+    {
+	if( duty < -1 )
+	    duty = -1;
+	if( duty > 1 )
+	    duty = 1;
+	    
+	let duty_i32 = duty * 100000;
+	console.log("duty_i32=" + duty_i32);
+	let data = Buffer.from( [duty_i32 >> 24, (duty_i32 >> 16) & 0xff, (duty_i32 >> 8) & 0xff, duty_i32 & 0xff] );
+	console.log("data=" + data[0] + ", " + data[1] + " " + data[2] + " " + data[3]);
+	
+	await this.sendPacket( Packet.Types.SET_DUTY, data, true );
+    }
+
+    async getAppConf() {
+	await this.sendPacket( Packet.Types.GET_APPCONF, [], true);
+    }
+    
+    // for now, assume extended
     async sendCAN( id, data /* : Uint8Array */, withResponse )
 	{
 		// last 0x01 indicates extended
