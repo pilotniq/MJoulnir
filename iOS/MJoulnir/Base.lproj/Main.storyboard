@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="18122" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="20037" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_7" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="18093"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="20020"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
+        <capability name="UIMenu" message="Requires Xcode 11 or later." minToolsVersion="11.0" requiredIntegratedClassName="UICommandDiff"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -270,8 +271,8 @@
                                     <action selector="offAction" destination="Ny6-OL-GnF" eventType="touchUpInside" id="pAU-Th-Bdn"/>
                                 </connections>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="z8h-wm-7Ly">
-                                <rect key="frame" x="63" y="580" width="80" height="60"/>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="z8h-wm-7Ly">
+                                <rect key="frame" x="98" y="579" width="80" height="60"/>
                                 <color key="backgroundColor" systemColor="systemYellowColor"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="80" id="CHF-Vk-ELd"/>
@@ -290,14 +291,12 @@
                         <viewLayoutGuide key="safeArea" id="7BU-fW-xst"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="7BU-fW-xst" firstAttribute="bottom" secondItem="z8h-wm-7Ly" secondAttribute="bottom" constant="27.666666666666629" id="5mn-d9-MOM"/>
-                            <constraint firstItem="7BU-fW-xst" firstAttribute="bottom" secondItem="tB4-Wg-sP4" secondAttribute="bottom" constant="27.666666666666629" id="7lN-Db-LTt"/>
-                            <constraint firstItem="7BU-fW-xst" firstAttribute="bottom" secondItem="z8h-wm-7Ly" secondAttribute="bottom" constant="36" id="Foy-by-pSj"/>
                             <constraint firstItem="7BU-fW-xst" firstAttribute="trailing" secondItem="tB4-Wg-sP4" secondAttribute="trailing" constant="74" id="OhT-ru-cZ7"/>
                             <constraint firstItem="z8h-wm-7Ly" firstAttribute="leading" secondItem="7BU-fW-xst" secondAttribute="leading" constant="98" id="Ps0-sL-vGw"/>
                             <constraint firstItem="7BU-fW-xst" firstAttribute="bottom" secondItem="tB4-Wg-sP4" secondAttribute="bottom" constant="37" id="hQM-VB-MZA"/>
                             <constraint firstItem="tB4-Wg-sP4" firstAttribute="leading" secondItem="z8h-wm-7Ly" secondAttribute="trailing" constant="92" id="jw9-Y1-hkf"/>
                             <constraint firstItem="tB4-Wg-sP4" firstAttribute="leading" secondItem="z8h-wm-7Ly" secondAttribute="trailing" constant="92" id="lXo-0k-hXO"/>
+                            <constraint firstItem="7BU-fW-xst" firstAttribute="bottom" secondItem="z8h-wm-7Ly" secondAttribute="bottom" constant="37" id="vlW-Dj-rel"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="bRE-8b-nGw"/>
@@ -345,13 +344,12 @@
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <button opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jIW-hq-eZv">
-                                <rect key="frame" x="210" y="597" width="82" height="54"/>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jIW-hq-eZv">
+                                <rect key="frame" x="210" y="602" width="82" height="56"/>
                                 <color key="backgroundColor" systemColor="systemYellowColor"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="82" id="FMQ-aV-8kG"/>
-                                    <constraint firstAttribute="height" constant="38" id="M9m-E3-fQs"/>
-                                    <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="54" id="vr6-NO-yHu"/>
+                                    <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="56" id="M9m-E3-fQs"/>
                                 </constraints>
                                 <fontDescription key="fontDescription" type="system" pointSize="21"/>
                                 <state key="normal" title="Charge">
@@ -361,21 +359,125 @@
                                     <action selector="charge" destination="sFi-fU-gKU" eventType="touchUpInside" id="cnU-SM-mbx"/>
                                 </connections>
                             </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Target Level:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="uKy-ay-9up">
+                                <rect key="frame" x="16" y="73" width="106" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Max Wall Current:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="fAg-hU-DkG">
+                                <rect key="frame" x="16" y="161" width="135" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="80" minValue="0.0" maxValue="100" translatesAutoresizingMaskIntoConstraints="NO" id="Hm0-nF-SA0">
+                                <rect key="frame" x="14" y="110" width="261" height="30"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <connections>
+                                    <action selector="setTargetLevel:" destination="7tq-7B-E2u" eventType="valueChanged" id="APM-TL-fkJ"/>
+                                    <action selector="targetLevelSliderChanged" destination="7tq-7B-E2u" eventType="valueChanged" id="Gr8-Jc-3AK"/>
+                                    <action selector="targetLevelSliderChanged" destination="sFi-fU-gKU" eventType="valueChanged" id="saK-Bx-soa"/>
+                                </connections>
+                            </slider>
+                            <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="9" minValue="1" maxValue="15" translatesAutoresizingMaskIntoConstraints="NO" id="b7d-rY-0tW">
+                                <rect key="frame" x="14" y="190" width="261" height="30"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <connections>
+                                    <action selector="maxWallCurrentSliderChangd" destination="7tq-7B-E2u" eventType="valueChanged" id="LhS-ty-lCZ"/>
+                                    <action selector="maxWallCurrentSliderChanged2:forEvent:" destination="7tq-7B-E2u" eventType="valueChanged" id="eAq-NP-ZAW"/>
+                                </connections>
+                            </slider>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="aPv-hP-a72">
+                                <rect key="frame" x="342" y="111" width="30" height="30"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Set"/>
+                                <connections>
+                                    <action selector="setChargingTargetSOC" destination="sFi-fU-gKU" eventType="touchUpInside" id="fWs-su-1qa"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="100%" textAlignment="right" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="4mB-TX-CAK">
+                                <rect key="frame" x="281" y="114" width="54" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="10 A (2 300 W)" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tEF-7y-uVi">
+                                <rect key="frame" x="159" y="161" width="176" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="10 A (2 300 W)" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UmY-WI-nbF">
+                                <rect key="frame" x="16" y="227" width="254" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="5g4-O2-sKi">
+                                <rect key="frame" x="342" y="189" width="30" height="30"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Set"/>
+                                <connections>
+                                    <action selector="setMaxWallCurrent" destination="7tq-7B-E2u" eventType="touchUpInside" id="6ve-MQ-KGJ"/>
+                                    <action selector="setMaxWallCurrent" destination="sFi-fU-gKU" eventType="touchUpInside" id="e3b-er-7h6"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="100%" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="mXo-Cb-bED">
+                                <rect key="frame" x="130" y="73" width="47" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Throttle:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Wlc-u5-Nh8">
+                                <rect key="frame" x="16" y="274" width="65" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" pointerInteraction="YES" changesSelectionAsPrimaryAction="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Gra-u9-1er">
+                                <rect key="frame" x="90" y="274" width="225" height="66"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <accessibility key="accessibilityConfiguration" label="Throttle"/>
+                                <menu key="menu" title="Throttle" identifier="throttle" id="kjY-su-LnS" userLabel="ThrottleMenu">
+                                    <menuOptions key="menuOptions" displayInline="YES" singleSelection="YES"/>
+                                    <children>
+                                        <command title="Knob" menuElementState="on" id="4Kx-7D-sYw" userLabel="Knob"/>
+                                        <command title="Mouse" id="cd0-pD-45h" userLabel="Mouse"/>
+                                        <command title="App" id="fYp-2O-M8e" userLabel="App"/>
+                                    </children>
+                                </menu>
+                                <state key="normal" title="Throttle"/>
+                            </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="YkA-jI-nuu"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="YkA-jI-nuu" firstAttribute="bottom" secondItem="Qlz-9S-m4h" secondAttribute="bottom" constant="40" id="2Kj-8d-SSa"/>
-                            <constraint firstItem="YkA-jI-nuu" firstAttribute="bottom" secondItem="jIW-hq-eZv" secondAttribute="bottom" constant="41.666666666666629" id="6Eb-tm-Udh"/>
+                            <constraint firstItem="YkA-jI-nuu" firstAttribute="bottom" secondItem="Qlz-9S-m4h" secondAttribute="bottomMargin" constant="40" id="2Kj-8d-SSa"/>
+                            <constraint firstItem="YkA-jI-nuu" firstAttribute="bottom" secondItem="jIW-hq-eZv" secondAttribute="bottomMargin" constant="40" id="6Eb-tm-Udh"/>
                             <constraint firstItem="Qlz-9S-m4h" firstAttribute="leading" secondItem="YkA-jI-nuu" secondAttribute="leading" constant="77" id="9kb-84-Fi6"/>
-                            <constraint firstItem="YkA-jI-nuu" firstAttribute="bottom" secondItem="Qlz-9S-m4h" secondAttribute="bottom" constant="37" id="FHh-MN-I68"/>
                             <constraint firstItem="YkA-jI-nuu" firstAttribute="trailing" secondItem="jIW-hq-eZv" secondAttribute="trailing" constant="96" id="TuZ-aB-5xu"/>
-                            <constraint firstItem="YkA-jI-nuu" firstAttribute="bottom" secondItem="jIW-hq-eZv" secondAttribute="bottom" constant="39" id="hOq-9C-YoR"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="cE0-iU-Dxm"/>
                     <connections>
+                        <outlet property="changedTargetLevelLabel" destination="4mB-TX-CAK" id="Iyu-V3-rz5"/>
+                        <outlet property="changedWallCurrentLabel" destination="UmY-WI-nbF" id="gFR-Rg-Ayl"/>
                         <outlet property="chargerStateLabel" destination="IAM-If-mzJ" id="KgO-ae-Z59"/>
+                        <outlet property="chargingTargetSOCLabel" destination="uKy-ay-9up" id="dwl-Ns-gM5"/>
+                        <outlet property="chargingTargetSOCSlider" destination="Hm0-nF-SA0" id="Z6y-49-1hW"/>
+                        <outlet property="maxWallCurrentLabel" destination="tEF-7y-uVi" id="EO6-gw-B3c"/>
+                        <outlet property="maxWallCurrentSlider" destination="b7d-rY-0tW" id="5Jb-Mv-Qhu"/>
+                        <outlet property="targetLevelLabel" destination="mXo-Cb-bED" id="s4q-t9-1Mr"/>
+                        <outlet property="throttleButton" destination="Gra-u9-1er" id="lRe-0a-W6e"/>
+                        <outlet property="throttleMenu" destination="kjY-su-LnS" id="Ufi-Ee-9Sg"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="DFK-tL-c44" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
@@ -728,7 +830,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="systemTealColor">
-            <color red="0.35294117647058826" green="0.78431372549019607" blue="0.98039215686274506" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="0.18823529411764706" green="0.69019607843137254" blue="0.7803921568627451" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
         <systemColor name="systemYellowColor">
             <color red="1" green="0.80000000000000004" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>

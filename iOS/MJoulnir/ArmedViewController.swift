@@ -13,8 +13,21 @@ class ArmedViewController: UIViewController, SetModel {
   var model: Model?
 
   @IBOutlet weak var chargerStateLabel: UILabel!
+  @IBOutlet weak var chargingTargetSOCSlider: UISlider!
+  @IBOutlet weak var maxWallCurrentSlider: UISlider!
+  @IBOutlet weak var chargingTargetSOCLabel: UILabel!
+  @IBOutlet weak var maxWallCurrentLabel: UILabel!
+  @IBOutlet weak var targetLevelLabel: UILabel!
+  @IBOutlet weak var changedWallCurrentLabel: UILabel!
+  @IBOutlet weak var changedTargetLevelLabel: UILabel!
+
+  @IBOutlet weak var throttleButton: UIButton!
+
+  @IBOutlet weak var throttleMenu: UIMenu!
 
   var chargerStateSubscription: AnyCancellable?
+  var chargerMaxWallCurrentSubscription: AnyCancellable?
+  var chargerTargetSOCSubscription: AnyCancellable?
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -24,9 +37,36 @@ class ArmedViewController: UIViewController, SetModel {
     // stateSubscription = model.$state.sink(receiveValue:self.transition)
   }
 
-  override func viewDidAppear(_ animated: Bool) {
+  override func viewWillAppear(_ animated: Bool) {
     chargerStateSubscription = model?.$chargerState.sink(receiveValue:self.updateChargerState)
+
+    chargerMaxWallCurrentSubscription = model?.$chargerMaxWallCurrent.sink { newMaxWallCurrent in self.updateMaxWallCurrent(maxWallCurrentOpt: newMaxWallCurrent) }
+    chargerTargetSOCSubscription = model?.$chargerTargetSOC.sink { newTargetSOC in self.updateTargetSOC(targetSOCOpt: newTargetSOC) }
+
+    updateMaxWallCurrent(maxWallCurrentOpt: model?.chargerMaxWallCurrent)
+    updateTargetSOC(targetSOCOpt: model?.chargerTargetSOC)
+
+    if #available(iOS 15.0, *) {
+      throttleButton.changesSelectionAsPrimaryAction = true
+      throttleButton.showsMenuAsPrimaryAction = true
+/*
+      throttleMenu.changesSelectionAsPrimaryAction = true
+      throttleMenu.showsMenuAsPrimaryAction = true
+ */
+    } else {
+      // Fallback on earlier versions
+    }
   }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    chargerStateSubscription?.cancel();
+    chargerMaxWallCurrentSubscription?.cancel();
+    chargerTargetSOCSubscription?.cancel();
+  }
+/*
+  override func viewDidAppear(_ animated: Bool) {
+  }
+*/
   @IBAction func disarm() {
     self.model?.requestStateChange(newState: .Idle)
   }
@@ -35,6 +75,52 @@ class ArmedViewController: UIViewController, SetModel {
     self.model?.requestStateChange(newState: .Charging)
   }
   
+  @IBAction func setChargingTargetSOC() {
+    model?.requestSetTargetSOC(newTargetSOC: UInt(self.chargingTargetSOCSlider.value.rounded()))
+  }
+
+  @IBAction func setMaxWallCurrent() {
+    model?.requestSetMaxWallCurrent(newMaxWallCurrent: Double(self.maxWallCurrentSlider.value))
+  }
+  
+  @IBAction func targetLevelSliderChanged() {
+    let nf = NumberFormatter()
+    nf.maximumFractionDigits = 0
+    nf.numberStyle = .decimal
+    let target = chargingTargetSOCSlider.value.rounded();
+
+    changedTargetLevelLabel.text = "\(nf.string(from: NSNumber(value: target))!)%"
+  }
+
+  func updateMaxWallCurrent( maxWallCurrentOpt: Double?)
+  {
+    if let maxWallCurrent = maxWallCurrentOpt
+    {
+      let nf = NumberFormatter()
+      nf.maximumFractionDigits = 0
+      nf.numberStyle = .decimal
+
+      self.maxWallCurrentSlider.setValue(Float(maxWallCurrent), animated: false)
+      self.maxWallCurrentLabel.text = "\(nf.string(from: NSNumber(value:maxWallCurrent))!) A (\(nf.string(from: NSNumber(value: maxWallCurrent * 230))!) W)"
+    }
+  }
+
+  func updateTargetSOC( targetSOCOpt: UInt?)
+  {
+    if let targetSOC = targetSOCOpt
+    {
+      let nf = NumberFormatter()
+      nf.maximumFractionDigits = 0
+      nf.numberStyle = .decimal
+
+      self.chargingTargetSOCSlider.setValue(Float(targetSOC), animated: false)
+      // var targetSoc = (chargerSettings.target_soc * 100)
+      // targetSoc.round()
+      self.targetLevelLabel.text = "\(nf.string(from: NSNumber(value: targetSOC))!)%"
+      self.changedTargetLevelLabel.text = "\(nf.string(from: NSNumber(value: targetSOC))!)%"
+    }
+  }
+
   func updateChargerState( chargerStateOpt: ChargerState?)
   {
     var description: String;
