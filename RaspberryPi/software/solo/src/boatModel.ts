@@ -509,8 +509,9 @@ export class Battery extends BoatModelAttribute
 	// attributes
 	// 18 elements - voltages in each cell
 	// minCellVoltage
-	
-	// parameter: array of 3 arrays with 6 voltages
+
+
+// parameter: array of 3 arrays with 6 voltages
 	setVoltages(voltages: number[][]): void
 	{
 		this.voltages = voltages;
@@ -660,6 +661,15 @@ export class Battery extends BoatModelAttribute
 		const moduleVoltages = this.voltages?[moduleNumber] : undefined;
 		
 		return moduleVoltages?.reduce( (acc, voltage) => acc + voltage, 0 );
+	}
+
+	getSerialCellCount(): number
+	{
+		const result = this.voltages.length * this.voltages[0].length;
+
+		console.log("boatModel.ts: Battery.getSerialCellCount: Serial cell count=" + result);
+
+		return result;
 	}
 
 	getTotalVoltage(): number | undefined {

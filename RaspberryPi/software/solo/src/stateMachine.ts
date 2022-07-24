@@ -199,6 +199,35 @@ class IdleState extends MJoulnirState
 		}
 	}	
 }
+/*
+class TurnOffState extends MJoulnirState
+{
+	constructor( machine: ElectricDrivetrainStateMachine )
+	{
+		super( BoatModel.State.Off, machine, "Off" );
+	}
+
+	canEnter(): boolean
+	{
+		return true;
+	}
+
+	enter()
+	{
+		super.enter()
+		const hardware = this.stateMachine.model.hardware
+		hardware.setPrecharge( false );
+		hardware.setContactor( false );
+
+		// Call "shutdown" command line
+	}
+
+	exit()
+	{
+		// should never get here
+	}
+}
+*/
 
 class BatteryErrorState extends MJoulnirState
 {
@@ -313,7 +342,7 @@ class ArmedState extends MJoulnirState
 
 	exit(): void
 	{
-		console.log( "chargeState.exit: pauseAutoCharge = false")
+		console.log( "armedState.exit: pauseAutoCharge = false")
 		this.pauseAutoCharge = false
 
 		this.model.charger.unOnChanged( this.boundChargerListener );
@@ -724,13 +753,13 @@ class ChargeState extends MJoulnirState
 			this.abort();
 			return;
 		}
-		const voltageDiff = targetCellVoltage - maxCellVoltage
-
+		const voltageDiff = targetCellVoltage - maxCellVoltage;
+		const serialCells = this.battery.getSerialCellCount();
 		this.target_pack_voltage = this.battery.getTotalVoltage()! + 
-			voltageDiff * 18;
+			voltageDiff * serialCells;
 
 		// TODO: Increase to 75.6
-		assert( this.target_pack_voltage <= 75.6 );
+		assert( this.target_pack_voltage <= (serialCells * 4.2) /* 75.6 */ );
 
 		if( !this.current_limiting && (voltageDiff <= 0.002) )
 		{
