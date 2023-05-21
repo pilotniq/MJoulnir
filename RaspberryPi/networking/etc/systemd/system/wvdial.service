@@ -1,0 +1,19 @@
+[Unit]
+Description=wvdial auto connect for 3G modem
+Wants=network.target
+Before=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=30
+PIDFile=/run/wvdial.pid
+# EnvironmentFile=/home/pi/gc_modem/wvdial/wvdial.ini
+# ExecStart=/usr/bin/wvdial $DIALER1 $DIALER2 -C /home/pi/gc_modem/wvdial/wvdial.conf
+ExecStart=/usr/bin/wvdial nornet -C /etc/wvdial.conf
+ExecReload=/bin/kill -s HUP $MAINPID
+#ExecStop=/bin/kill -s TERM $MAINPID
+ExecStop=/bin/kill -s KILL $MAINPID
+
+[Install]
+WantedBy=multi-user.target
