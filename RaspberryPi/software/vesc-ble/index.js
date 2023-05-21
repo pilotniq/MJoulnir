@@ -176,16 +176,58 @@ class Packet
 							"byte_count": 4,
 							"scale": 1000,
 						    "nextState": "WaitForCRC"}},
+			  "GetAppConf_signature": { func: Packet.parseMulti,
+						    "context": {
+							"field": "signature",
+							"byte_count": 4,
+						    "nextState": "GetAppConf_controller_id",
+						    },
+						  },
 			  "GetAppConf_controller_id": { func: Packet.parseByteField,
 							"context": {
 							    "field": "controller_id",
-							    "nextState": "GetAppConf_timeout_msec"}},
+							"nextState": "GetAppConf_timeout_msec"
+							},
+						      },
 			  "GetAppConf_timeout_msec": { func: Packet.parseMulti,
 						       "context": {
 							   "field": "timeout_msec",
 							   "byte_count": 4,
-							   "nextState": "GetAppConf_unparsed1"
-						       }},
+						       "nextState": "GetAppConf_unparsed1"
+						       },
+						     },
+			  // timeout_brake_currnt, can_status_rate_1, can_status_msgs_r1, can_status_rate_2, can_status_msgs_r2,
+			  "GetAppConf_unparsed1": { func: Packet.parseMulti,
+						    "context": {
+							"field": "unparsed1",
+							"byte_count": 10, 
+						    "nextState": "GetAppConf_canBaud"
+						    },
+						  },
+			  "GetAppConf_canBaud": { func: Packet.parseByteField,
+						  "context": {
+						      "field": "can_baud",
+						  "nextState": "GetAppConf_unparsed2"
+						  },
+						},
+			  "GetAppConf_unparsed2": { func: Packet.parseMulti,
+						    "context": {
+							"field": "unparsed2",
+							"byte_count": 13,
+						  "nextState": "GetAppConf_appToUse"
+						    }
+						  },
+			  "GetAppConf_appToUse": { func: Packet.parseByteField,
+						  "context": {
+						      "field": "app_to_use",
+						  },
+						  "nextState": "GetAppConf_unparsed3"
+						},
+			  "GetAppConf_unparsed3": { func: Packet.parseRestToBuffer,
+						    "context": {
+							"field": "unparsed3"
+						    }
+						  },
 				"CAN_ID": { func: Packet.parseMulti,
 						"context": {
 							"field": "id",
@@ -225,7 +267,7 @@ class Packet
 			};
 	
 	constructor() { 
-		this.state = Packet.States.SizeByte; 
+	    this.state = Packet.States.SizeByte;
 		this.checksum = 0;
 	}
 
@@ -260,7 +302,7 @@ class Packet
 
 	static parseSize( packet, byte)
 	{
-		// console.log( "parseSize" );
+		console.log( "parseSize" );
 		switch( byte )
 		{
 			case 2:
@@ -271,7 +313,7 @@ class Packet
 				break;
 
 			case 3:
-				packet.state = Packet.States.LengthHigh;
+		                packet.state = Packet.States.Length16;  // was LengthHigh
 				break;
 
 			default:
@@ -284,11 +326,11 @@ class Packet
 	static parseByteField( packet, byte, context )
 	{
 		packet[ context.field ] = byte;
-		// console.log( "parseByteField: " + context.field + " = " + byte );
-		// console.log( "parseByteField: next state is '" + context.nextState + "'" )
+		console.log( "parseByteField: " + context.field + " = " + byte );
+		console.log( "parseByteField: next state is '" + context.nextState + "'" )
 		// console.log( "context: " + JSON.stringify(context))
 		packet.state = Packet.States[ context.nextState ];
-		// console.log( "state=" + packet.state );
+		console.log( "parseByteField: state=" + packet.state );
 		packet.inPayload = true; 
 	}
 
@@ -315,7 +357,7 @@ class Packet
 			else
 				packet[context.field] = value
 			
-			// console.log( "Parsed field '" + context.field + "' = " + packet[context.field]);
+		        console.log( "Parsed field '" + context.field + "' = " + packet[context.field] + " = 0x" + packet[context.field].toString(16));
 			packet._multi_index = 0;
 			packet.inPayload = true; // required to switch to payload after long size
 
@@ -326,8 +368,8 @@ class Packet
 				console.log( "Invalid next state '" + context.nextState );
 				console.log( "Context: " + JSON.stringify( context ));
 			}
-			// console.log( "multi: Next state: " + context.nextState );
-			// console.log( "state=" + packet.state );
+			console.log( "multi: Next state: " + context.nextState );
+			console.log( "state=" + packet.state );
 		}
 		else
 		{
@@ -361,6 +403,9 @@ class Packet
 				packet.state = Packet.States["CAN_ID"];
 				break;
 
+		    case Packet.Types.GET_APPCONF:
+		                packet.state = Packet.States["GetAppConf_signature"];
+		    break;
 			default:
 				console.log( "Unknown packet type " + byte );
 				packet.invalid = true;
@@ -526,7 +571,7 @@ class VESC extends EventEmitter
 
 	readPacketData( data, isNotification )
 	{
-		// console.log( "Got data: " + data.toString( 'hex' ) );
+		console.log( "VESC readPacketData: Got data: " + data.toString( 'hex' ) );
 		for( const byte of data )
 		{
 			this.currentPacket.parse(byte);
@@ -580,9 +625,12 @@ class VESC extends EventEmitter
 		// GOtData gets:
 		// 02 0e 55 18ff50e5 01 00 02 00 00 18 00 00 00 228f 03
 		// st sz ty id       extended! volt  curre 
-		// console.log( "sendPacket: data=" + data);
-		let header = Buffer.from( [0x02, data.length + 1] );
+		console.log( "sendPacket: data=" + data);
+	        let header = Buffer.from( [0x02, data.length + 1] );
+	    	console.log( "sendPacket: after header");
+
 		let payload = Buffer.concat( [new Uint8Array([type]), data] );
+	    	console.log( "sendPacket: after payload");
 		let crc = Packet.calculateChecksum( payload );
 		let tailBuffer = Buffer.from( [crc >> 8, crc & 0xff, 3] );
 		let buffer = Buffer.concat( [header, payload, tailBuffer] );
@@ -602,11 +650,12 @@ class VESC extends EventEmitter
     // duty is value -1 ... 1
     async sendSetDuty( duty )
     {
+	/*
 	if( duty < -1 )
 	    duty = -1;
 	if( duty > 1 )
 	    duty = 1;
-	    
+	*/    
 	let duty_i32 = duty * 100000;
 	console.log("duty_i32=" + duty_i32);
 	let data = Buffer.from( [duty_i32 >> 24, (duty_i32 >> 16) & 0xff, (duty_i32 >> 8) & 0xff, duty_i32 & 0xff] );
@@ -616,7 +665,7 @@ class VESC extends EventEmitter
     }
 
     async getAppConf() {
-	await this.sendPacket( Packet.Types.GET_APPCONF, [], true);
+	await this.sendPacket( Packet.Types.GET_APPCONF, new Uint8Array(), true);
     }
     
     // for now, assume extended

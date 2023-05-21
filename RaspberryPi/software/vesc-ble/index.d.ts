@@ -52,6 +52,7 @@ export interface VESCinterface extends EventEmitter
 {
     async ble_connect( ): Promise<void>;
     async getValues(): Promise<void>;
+    async getAppConf(): Promise<void>;
     sendCAN( id: number, data: Uint8Array, withResponse: boolean ): Promise<void>;
 }
 
@@ -63,6 +64,7 @@ export declare class VESC extends EventEmitter implements VESCinterface
     async ble_connect( ): Promise<void>;
     sendPacket( type: number, data: Buffer, withResponse: boolean ): Promise<void>;
     async getValues(): Promise<void>;
+    async getAppConf(): Promise<void>;
     sendCAN( id: number, data: Uint8Array, withResponse: boolean ): Promise<void>;
     // sendCANCharge( maxVoltage: number, maxCurrent: number, chargeOn: boolean ): void;
 }

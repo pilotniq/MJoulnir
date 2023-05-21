@@ -100,12 +100,15 @@ export class VESCtalker extends events.EventEmitter
         this.isConnected = true
         this.vesc.getValues()
             .then( () => { console.log( "getValues returned" ); })
-            .catch( (error) => console.log( "VESCtalker.connected: error: " + error ))
+            .catch( (error) => console.log( "VESCtalker.getValues: error: " + error ))
+	    .then( () => this.vesc.getAppConf() )
+            .then( () => { console.log( "getAppConf returned" ); })
+            .catch( (error) => console.log( "VESCtalker.getAppConf: error: " + error ))
     }
 
     receivePacket( packet: VESCble.Packet ): void
     {
-        // console.log( "Got VESC BLE packet, type=" + packet.type );
+        console.log( "Got VESC BLE packet, type=" + packet.type );
 
         switch( packet.type )
         {

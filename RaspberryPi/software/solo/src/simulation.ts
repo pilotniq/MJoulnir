@@ -576,6 +576,11 @@ export class SimulatedVESC extends events.EventEmitter implements VESCble.VESCin
         return Promise.resolve()
     }
 
+    async getAppConf(): Promise<void>
+    {
+	// NIY
+    }
+    
     sendCAN( id: number, data: Uint8Array, withResponse: boolean ): Promise<void>
     {        
         return Promise.resolve()
