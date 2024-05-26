@@ -967,6 +967,7 @@ class ChargeState extends MJoulnirState
 			console.log("charging done: max cell voltage=" + this.battery.getMaxCellVoltage()! + " >= (target voltage " + this.target_max_cell_voltage! + " - 0.002), isBalanced=" +
 					      this.battery.isBalanced() + ", charging current = " + this.charging_current );
 			this.done();
+			return;
 			// charging is done
 			/*
 			console.log( "Charging is done.")
