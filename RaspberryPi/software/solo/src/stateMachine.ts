@@ -159,7 +159,8 @@ class IdleState extends MJoulnirState
 		}
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		if( battery.getMinCellVoltage()! < 3.3 )
+		// TODO: (Important) implement Battery charge low state to allow charging
+		if( battery.getMinCellVoltage()! < 3.1 )
 		{
 			this.stateMachine.batteryErrorState.message = "Battery Charge Low";
 			this.stateMachine.transitionTo( this.stateMachine.batteryErrorState );
@@ -184,7 +185,8 @@ class IdleState extends MJoulnirState
 		switch( nextState )
 		{
 			case this.stateMachine.armedState:
-				if( battery.isValid && !battery.isDangerouslyLow() )
+			     // We need to be able to go to armed state to be able to charge.
+				if( battery.isValid /* && !battery.isDangerouslyLow() */)
 				{
 					console.log( "Transitioning to turnOnContactorState" )
 					this.transitionTo( this.stateMachine.turnOnContactorState )
@@ -376,7 +378,7 @@ class ArmedState extends MJoulnirState
 	{
 		const esc = this.model.vescState
 
-		if( esc.duty_now != 0 )
+		if( Math.abs(esc.duty_now) > 0.005 ) // was != 0
 		{
 			console.log( "duty_now=" + esc.duty_now )
 			this.transitionTo( this.stateMachine.activeState );
@@ -962,6 +964,8 @@ class ChargeState extends MJoulnirState
 			((this.battery.isBalanced() && this.charging_current <= 0.5) ||
 			 (!this.battery.isBalanced() && this.charging_current < 5)))
 		{
+			console.log("charging done: max cell voltage=" + this.battery.getMaxCellVoltage()! + " >= (target voltage " + this.target_max_cell_voltage! + " - 0.002), isBalanced=" +
+					      this.battery.isBalanced() + ", charging current = " + this.charging_current );
 			this.done();
 			// charging is done
 			/*
