@@ -3,6 +3,7 @@ import * as VESCreader from "./vesc"
 
 import * as BoatModel from "./boatModel"
 import * as BLECentral from './bleCentral';
+import * as HTTP from './http';
 import * as StateMachine from './stateMachine';
 import { TeslaBatteryReader } from "./batteryReader";
 // import { VESCtalker } from "./vesc";
@@ -35,7 +36,8 @@ boatModel.start()
 // BLE startup too early will fail because BLE device not available.
 delay( 10 )
 	.then( () => { console.log( "Starting BLE Central" );
-                   BLECentral.start(boatModel, statemachine) 
+                   BLECentral.start(boatModel, statemachine);
+		   HTTP.start(boatModel, statemachine);
 	});
 
 
