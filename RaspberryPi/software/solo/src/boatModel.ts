@@ -1,5 +1,5 @@
 import fs from 'fs';
-
+import * as mqtt from "mqtt"
 import * as VESCble from 'vesc-ble'
 
 import * as Model from "./model"
@@ -1053,6 +1053,7 @@ export class HardwareState extends BoatModelAttribute
 
 export class BoatModel extends Model.Model
 {
+	mqtt_client: mqtt.MqttClient
 	state = new MJoulnirState(this, State.Idle)
 	charger: ChargerState
 	hardware: HardwareState
@@ -1063,6 +1064,13 @@ export class BoatModel extends Model.Model
 		hardware: LowLevelHardware, charger: Charger )
 	{
 		super()
+
+		this.mqtt_client = mqtt.connect('mqtt://localhost');
+		this.mqtt_client.on('connect', (packet) => {console.log("MQTT connected");})
+		this.mqtt_client.on('disconnect', (packet) => {console.log("MQTT disconnected");})
+		this.mqtt_client.on('error', (error) => {console.log("MQTT error: " + error);})
+		this.mqtt_client.on('message', (message, payload) => {console.log("MQTT message: '" + message + "', '" + payload + "'");})
+		
 		this.battery = new Battery( this, batteryReader )
 		this.charger = new ChargerState(this, charger)
 		this.vescState = new VESC( this, vescTalker )
