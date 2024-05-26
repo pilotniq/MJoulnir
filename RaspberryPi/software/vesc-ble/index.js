@@ -200,8 +200,8 @@ class Packet
 			  "GetAppConf_unparsed1": { func: Packet.parseMulti,
 						    "context": {
 							"field": "unparsed1",
-							"byte_count": 10, 
-						    "nextState": "GetAppConf_canBaud"
+							"byte_count": 14, 
+						    "nextState": "GetAppConf_appToUse"
 						    },
 						  },
 			  "GetAppConf_canBaud": { func: Packet.parseByteField,
@@ -220,14 +220,31 @@ class Packet
 			  "GetAppConf_appToUse": { func: Packet.parseByteField,
 						  "context": {
 						      "field": "app_to_use",
-						  },
 						  "nextState": "GetAppConf_unparsed3"
-						},
-			  "GetAppConf_unparsed3": { func: Packet.parseRestToBuffer,
-						    "context": {
-							"field": "unparsed3"
-						    }
 						  },
+						 },
+			  // Until and including field app_adc_conf.update_rate_hz
+			  "GetAppConf_unparsed3": { func: Packet.parseMulti,
+						    "context": {
+							"field": "unparsed3",
+							"byte_count": 113,
+						    "nextState": "GetAppConf_AppUartBaudrate",
+						    },
+						  },
+			  "GetAppConf_AppUartBaudrate": {
+			      func: Packet.parseMulti,
+			      "context": {
+				  "field": "uart_baudrate",
+				  "byte_count": 2,
+			      "nextState": "GetAppConf_unparsed4",
+			      },
+			  },
+			  "GetAppConf_unparsed4": {
+			      func: Packet.parseRestToBuffer,
+						    "context": {
+							"field": "unparsed4",
+						    },
+			  },
 				"CAN_ID": { func: Packet.parseMulti,
 						"context": {
 							"field": "id",
@@ -555,7 +572,10 @@ class VESC extends EventEmitter
 			if( noble.state == "poweredOn" )
 				this.startScanning();
 			else
-				noble.on( "stateChange", (state) => { if( state == "poweredOn") vesc.startScanning() } );
+			    noble.on( "stateChange", (state) => {
+				console.log("Charger BLE state change: " + state );
+				if( state == "poweredOn") vesc.startScanning()
+			    } );
 
 		} );
 	}
@@ -644,7 +664,12 @@ class VESC extends EventEmitter
 		if( !this.connected )
 			throw 'Not connected';
 
-		return this.ble_txCharacteristic.writeAsync( new Buffer.from([0x02, 0x01, 0x04, 0x40, 0x84, 0x03] ));
+	    // 2023-09-03 Added await here.
+	    console.log("vesc-ble: getValues: before writeAsync");
+	    let result = await this.ble_txCharacteristic.writeAsync( new Buffer.from([0x02, 0x01, 0x04, 0x40, 0x84, 0x03] ));
+	    console.log("vesc-ble: getValues: after writeAsync");
+
+	    return result;
 	}
 
     // duty is value -1 ... 1

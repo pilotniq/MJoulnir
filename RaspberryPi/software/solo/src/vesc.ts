@@ -98,12 +98,14 @@ export class VESCtalker extends events.EventEmitter
     {
         console.log( "VESCtalker conencted via BLE" );
         this.isConnected = true
-        this.vesc.getValues()
-            .then( () => { console.log( "getValues returned" ); })
+	// TODO: Restore! 2023-09-03
+	this.vesc.getAppConf()
+        // this.vesc.getValues()
+            .then( () => { console.log( "VESCtalker.connected: getAppConf returned" ); })
+            .catch( (error) => console.log( "VESCtalker.connected: getAppConf: error: " + error ))
+	    .then( () => { console.log("VSCtalker.conneceted: calling getValues"); this.vesc.getValues() } )
+            .then( () => { console.log( "getAppValues returned" ); })
             .catch( (error) => console.log( "VESCtalker.getValues: error: " + error ))
-	    .then( () => this.vesc.getAppConf() )
-            .then( () => { console.log( "getAppConf returned" ); })
-            .catch( (error) => console.log( "VESCtalker.getAppConf: error: " + error ))
     }
 
     receivePacket( packet: VESCble.Packet ): void
@@ -121,6 +123,16 @@ export class VESCtalker extends events.EventEmitter
                 this.emit( 'CAN', packet );
                 // TODO: handle according to ID.
                 break;
+
+	    case VESCble.Packet.Types["GET_APPCONF"]:
+	    	 console.log("Got AppConf");
+		 // this.app_conf = packet;
+		 // TODO: Support switching from ADC_UART to UART? NONE? to have MJoulnir set duty cycle
+	    	 break;
+		 
+	    default:
+		console.log("vest.ts: Unknown packet type");
+		break;
         }
     }
 
