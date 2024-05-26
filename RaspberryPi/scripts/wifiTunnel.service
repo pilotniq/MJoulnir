@@ -1,7 +1,7 @@
 [Unit]
 Description=WiFi Reverse SSH Tunnel
-After=network.target
-Wants=multi-user.target
+After=wvdial.service
+# Wants=multi-user.target
 
 [Service]
 # Wait 10 seconds before starting, to ensure for instance DNS is up
