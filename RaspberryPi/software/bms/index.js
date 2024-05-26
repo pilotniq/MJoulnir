@@ -202,7 +202,7 @@ class BMSBoard
 
 		this.moduleVolt = (bytes[0] * 256 + bytes[1]) * 6.25 / (0.1875 * 2 ** 14); // 0.002034609;
 		// console.log( "moduleVolt = " + this.moduleVolt + "(" + bytes[0] + ", " + bytes[1] + ")" );
-		
+	    console.log( "readMultiRegisters: bytes=" + bytes );
 		for( var i = 0; i < 6; i++ )
 		{
 			this.cellVoltages[i] = (bytes[2 + i * 2] * 256 + bytes[2 + i * 2 + 1]) * 6250 / (16383 * 1000)
@@ -529,7 +529,9 @@ class BMSPack
  
 	constructor( serialDevice )
 	{
-		this.serial = new SerialWrapper(serialDevice, 612500 );
+	    // this.serial = new SerialWrapper(serialDevice, 612500 );
+	    // Apperently, some modules can run at 631578
+		this.serial = new SerialWrapper(serialDevice, 631578 );
 		this.modules = {}
 		this.lock = new AsyncLock();
 	}
@@ -784,7 +786,7 @@ class BMSPack
 					return data.slice(3, 3 + byteCount);
 				}
 				else
-					throw "Expected " + (byteCount + 4) + " bytes, got " + data.length;
+					throw "readBytesFromDeviceRegister: Expected " + (byteCount + 4) + " bytes, got " + data.length;
 			} )
 	}
 
@@ -803,7 +805,7 @@ class BMSPack
 				// console.log( "writeBytes: received " + reply );
 
 				if( reply.length != sendData.length )
-					throw "Expected " + sendData.length + " bytes, got " + reply.length;
+					throw "writeByteToDeviceRegistr: Expected " + sendData.length + " bytes, got " + reply.length;
 				for( var i = 0; i < reply.length; i++ )
 					if( reply[i] != sendData[i] )
 						throw "Expected byte " + i + " to be " + sendData[i] + ", was " + reply[i]
